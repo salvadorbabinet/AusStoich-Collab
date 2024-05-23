@@ -1,6 +1,6 @@
 # AusStoich EDA 
 # Libraries & functions
-# library(here)
+library(here)
 library(ape)
 library(tidyverse)
 
@@ -29,11 +29,11 @@ summarize_cont <- function(tb, x, grouping = NULL) {
 }
 
 # Data import & tidying ---------------------------------------------------
-raw_data <- read_csv('austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv') 
+raw_data <- read_csv(here('Inputs','austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv')) 
 raw_data #For reference
 
 tidy_data <- read_csv(
-  file = 'austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv',
+  file = here('Inputs','austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv'),
   na = c('', 'NA', 'uncertain'),
   col_types = cols(
     woodiness = col_factor(c('herbaceous', 'woody')),
@@ -201,3 +201,4 @@ tidy_data |> ggplot(aes(x = CN_ratio, y = CP_ratio)) +
     x = 'C:N Ratio', y = 'C:P Ratio'
   )
 
+ggplot(tidy_data, aes(x = woodiness, y = ))
