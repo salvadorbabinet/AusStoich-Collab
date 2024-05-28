@@ -166,7 +166,11 @@ tidy_data |> ggplot(aes(x = CN_ratio)) +
   geom_histogram(bins = 60)
 
 tidy_data |> ggplot(aes(x = NP_ratio)) +
-  geom_histogram(bins = 60)
+  geom_histogram(bins = 60) +
+  labs(
+    title = 'Foliar N:P across all samples',
+    x = 'N:P', y = 'Frequency'
+  )
 
 tidy_data |> ggplot(aes(x = CP_ratio)) +
   geom_histogram(bins = 60)
