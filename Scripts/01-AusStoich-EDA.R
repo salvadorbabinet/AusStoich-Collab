@@ -51,7 +51,7 @@ tidy_data <- tidy_data |>
 tidy_data 
 
 # Phylogeny (this is not yet implemented properly)
-tree <- read.tree('ITS_tree.tre')
+tree <- read.tree(here('Inputs','ITS_tree.tre'))
 tree_species <- 
   tibble(tree[["treeTREE1="]][["tip.label"]]) |> 
   rename(species_in_tree = 'tree[["treeTREE1="]][["tip.label"]]')
@@ -166,7 +166,11 @@ tidy_data |> ggplot(aes(x = CN_ratio)) +
   geom_histogram(bins = 60)
 
 tidy_data |> ggplot(aes(x = NP_ratio)) +
-  geom_histogram(bins = 60)
+  geom_histogram(bins = 60) +
+  labs(
+    title = 'Foliar N:P across all samples',
+    x = 'N:P', y = 'Frequency'
+  )
 
 tidy_data |> ggplot(aes(x = CP_ratio)) +
   geom_histogram(bins = 60)
@@ -200,5 +204,3 @@ tidy_data |> ggplot(aes(x = CN_ratio, y = CP_ratio)) +
     title = 'Relationship between C:N & C:P across all samples',
     x = 'C:N Ratio', y = 'C:P Ratio'
   )
-
-ggplot(tidy_data, aes(x = woodiness, y = ))
