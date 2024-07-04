@@ -1,8 +1,8 @@
 # AusStoich EDA 
 # Libraries & functions
 library(here)
-library(ape)
 library(tidyverse)
+library(ape)
 
 # Takes tibble tb, categorical variable x; returns factorized count table for levels of x
 count_table <- function(tb, x) { 
@@ -29,6 +29,7 @@ summarize_cont <- function(tb, x, grouping = NULL) {
 }
 
 # Data import & tidying ---------------------------------------------------
+# Initial import 
 raw_data <- read_csv(here('Inputs','austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv')) 
 raw_data #For reference
 
@@ -46,9 +47,24 @@ tidy_data <- read_csv(
 tidy_data <- tidy_data |> 
   select(Unique_ID:LATLONG) |> 
   filter(!is.na(Unique_ID)) |> 
-  relocate(species_binom, .after = genus) 
+  relocate(species_binom, .after = genus) |> 
+  relocate(c(lat_deg, long_deg), .after = dataset_id)
 
 tidy_data 
+
+# Merging environmental data 
+env_data <- read_csv(here('Inputs', 'Aus-Stoich_gridded_env_data.csv')) |>
+  rename(lat_deg = lat, long_deg = lon) 
+
+seasonality_data <- read_csv(here('Inputs', 'AusStoich_Seasonality_WorldClim30s.csv')) |> 
+  rename(lat_deg = `latitude (deg)`, long_deg = `longitude (deg)`)
+
+joined_env <- full_join(env_data, seasonality_data)
+
+joined_data <- left_join(tidy_data, joined_env)
+
+write_csv(joined_data, 'AusStoich_Combined_Dataset_1.0.csv')
+
 
 # Phylogeny (this is not yet implemented properly)
 tree <- read.tree(here('Inputs','ITS_tree.tre'))
