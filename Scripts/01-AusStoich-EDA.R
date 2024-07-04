@@ -63,6 +63,8 @@ joined_env <- full_join(env_data, seasonality_data)
 
 joined_data <- left_join(tidy_data, joined_env)
 
+write_csv(joined_data, 'AusStoich_Combined_Dataset_1.0.csv')
+
 
 # Phylogeny (this is not yet implemented properly)
 tree <- read.tree(here('Inputs','ITS_tree.tre'))
