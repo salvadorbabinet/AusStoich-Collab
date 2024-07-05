@@ -1,4 +1,4 @@
-# AuStoich EDA 
+# AusStoich EDA 
 # Libraries & functions
 library(here)
 library(tidyverse)

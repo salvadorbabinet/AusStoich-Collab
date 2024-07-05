@@ -1,4 +1,4 @@
-# AuStoich Phylogeny 
+# AusStoich Phylogeny 
 # Libraries & functions 
 library(here)
 library(tidyverse)
