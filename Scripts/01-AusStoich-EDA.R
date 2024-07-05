@@ -1,8 +1,7 @@
-# AusStoich EDA 
+# AuStoich EDA 
 # Libraries & functions
 library(here)
 library(tidyverse)
-library(ape)
 
 # Takes tibble tb, categorical variable x; returns factorized count table for levels of x
 count_table <- function(tb, x) { 
@@ -64,13 +63,6 @@ joined_env <- full_join(env_data, seasonality_data)
 joined_data <- left_join(tidy_data, joined_env)
 
 write_csv(joined_data, 'AusStoich_Combined_Dataset_1.0.csv')
-
-
-# Phylogeny (this is not yet implemented properly)
-tree <- read.tree(here('Inputs','ITS_tree.tre'))
-tree_species <- 
-  tibble(tree[["treeTREE1="]][["tip.label"]]) |> 
-  rename(species_in_tree = 'tree[["treeTREE1="]][["tip.label"]]')
   
   
 # Structure  ---------------------------------------------------------
