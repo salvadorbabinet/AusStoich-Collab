@@ -18,13 +18,14 @@ all_data <- read_csv(
 
 cont_data <- all_data |> select(where(is.numeric))
 
-# Outliers & distributions 
+# Quick distributions (see 01-EDA)
 histogram <- function(data, value) {
   ggplot(data, aes(x = {{value}})) + geom_histogram(bins = 35)
 }
 
-histogram(cont_data, temp_seasonality)
+print(colnames(cont_data))
 
 for (i in 4:ncol(cont_data)) {
   print(histogram(cont_data, cont_data[[i]]))
 }
+
