@@ -15,5 +15,15 @@ all_data <- read_csv(
   )
 )
 
-# Standardize species names with LCVP 
-
+#Standardize species names with LCVP 
+standard_names <- read_csv(here('Inputs', 'NAME HERE'))
+austraits_leaf_stoich <- austraits_raw_genus %>%
+  left_join(all_naming_corrections, by = c("species" = "species_before_correction",
+                                           "genus" = "genus_before_correction",
+                                           "family" = "family_before_correction")) %>%
+  mutate(
+    species = ifelse(!is.na(species_after_correction), species_after_correction, species),
+    genus = ifelse(!is.na(genus_after_correction), genus_after_correction, genus),
+    family = ifelse(!is.na(family_after_correction), family_after_correction, family)
+  ) %>%
+  select(species, genus, family)
