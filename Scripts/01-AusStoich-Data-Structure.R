@@ -1,8 +1,7 @@
-# AusStoich EDA 
+# AusStoich Data Structure 
 # Libraries & functions
 library(here)
 library(tidyverse)
-library(ape)
 
 # Takes tibble tb, categorical variable x; returns factorized count table for levels of x
 count_table <- function(tb, x) { 
@@ -64,13 +63,6 @@ joined_env <- full_join(env_data, seasonality_data)
 joined_data <- left_join(tidy_data, joined_env)
 
 write_csv(joined_data, 'AusStoich_Combined_Dataset_1.0.csv')
-
-
-# Phylogeny (this is not yet implemented properly)
-tree <- read.tree(here('Inputs','ITS_tree.tre'))
-tree_species <- 
-  tibble(tree[["treeTREE1="]][["tip.label"]]) |> 
-  rename(species_in_tree = 'tree[["treeTREE1="]][["tip.label"]]')
   
   
 # Structure  ---------------------------------------------------------
@@ -142,6 +134,7 @@ tidy_data |> count(woodiness)
 tidy_data |> count(across(woodiness:putative_BNF)) 
 
 
+# Note: thorough EDA moved to 02 with adjusted data; keeping below for reference 
 # Variation ---------------------------------------------------------------
 # Foliar carbon 
 tidy_data |> ggplot(aes(x = leaf_C_per_dry_mass)) +
