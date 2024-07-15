@@ -1,7 +1,6 @@
-# AusStoich EDA 
+# AusStoich Data Structure 
 # Libraries & functions
 library(here)
-library(ape)
 library(tidyverse)
 
 # Takes tibble tb, categorical variable x; returns factorized count table for levels of x
@@ -29,6 +28,7 @@ summarize_cont <- function(tb, x, grouping = NULL) {
 }
 
 # Data import & tidying ---------------------------------------------------
+# Initial import 
 raw_data <- read_csv(here('Inputs','austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv')) 
 raw_data #For reference
 
@@ -46,15 +46,23 @@ tidy_data <- read_csv(
 tidy_data <- tidy_data |> 
   select(Unique_ID:LATLONG) |> 
   filter(!is.na(Unique_ID)) |> 
-  relocate(species_binom, .after = genus) 
+  relocate(species_binom, .after = genus) |> 
+  relocate(c(lat_deg, long_deg), .after = dataset_id)
 
 tidy_data 
 
-# Phylogeny (this is not yet implemented properly)
-tree <- read.tree('ITS_tree.tre')
-tree_species <- 
-  tibble(tree[["treeTREE1="]][["tip.label"]]) |> 
-  rename(species_in_tree = 'tree[["treeTREE1="]][["tip.label"]]')
+# Merging environmental data 
+env_data <- read_csv(here('Inputs', 'Aus-Stoich_gridded_env_data.csv')) |>
+  rename(lat_deg = lat, long_deg = lon) 
+
+seasonality_data <- read_csv(here('Inputs', 'AusStoich_Seasonality_WorldClim30s.csv')) |> 
+  rename(lat_deg = `latitude (deg)`, long_deg = `longitude (deg)`)
+
+joined_env <- full_join(env_data, seasonality_data)
+
+joined_data <- left_join(tidy_data, joined_env)
+
+write_csv(joined_data, 'AusStoich_Combined_Dataset_1.0.csv')
   
   
 # Structure  ---------------------------------------------------------
@@ -126,6 +134,7 @@ tidy_data |> count(woodiness)
 tidy_data |> count(across(woodiness:putative_BNF)) 
 
 
+# Note: thorough EDA moved to 02 with adjusted data; keeping below for reference 
 # Variation ---------------------------------------------------------------
 # Foliar carbon 
 tidy_data |> ggplot(aes(x = leaf_C_per_dry_mass)) +
@@ -166,7 +175,11 @@ tidy_data |> ggplot(aes(x = CN_ratio)) +
   geom_histogram(bins = 60)
 
 tidy_data |> ggplot(aes(x = NP_ratio)) +
-  geom_histogram(bins = 60)
+  geom_histogram(bins = 60) +
+  labs(
+    title = 'Foliar N:P across all samples',
+    x = 'N:P', y = 'Frequency'
+  )
 
 tidy_data |> ggplot(aes(x = CP_ratio)) +
   geom_histogram(bins = 60)
@@ -200,5 +213,3 @@ tidy_data |> ggplot(aes(x = CN_ratio, y = CP_ratio)) +
     title = 'Relationship between C:N & C:P across all samples',
     x = 'C:N Ratio', y = 'C:P Ratio'
   )
-
-ggplot(tidy_data, aes(x = woodiness, y = ))
