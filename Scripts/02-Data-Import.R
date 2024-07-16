@@ -15,4 +15,16 @@ all_data <- read_csv(
   )
 )
 
-# Standardize species names with LCVP 
+#LCVP name standardization - derivation in phylogeny script
+naming_corrections <- read_csv(here('Inputs', 'all_naming_corrections.csv'))
+
+all_corrected_data <- all_data %>%
+  left_join(naming_corrections, by = c("species_binom" = "species_before_correction",
+                                           "genus" = "genus_before_correction",
+                                           "family" = "family_before_correction")) %>%
+  mutate(
+    species_binom = ifelse(!is.na(species_after_correction), species_after_correction, species_binom),
+    genus = ifelse(!is.na(genus_after_correction), genus_after_correction, genus),
+    family = ifelse(!is.na(family_after_correction), family_after_correction, family)
+  ) %>%
+  select(-species_after_correction, -genus_after_correction, -family_after_correction) 
