@@ -16,4 +16,3 @@ all_data <- read_csv(
 )
 
 # Standardize species names with LCVP 
-
