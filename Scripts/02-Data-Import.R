@@ -28,6 +28,3 @@ all_corrected_data <- all_data %>%
     family = ifelse(!is.na(family_after_correction), family_after_correction, family)
   ) %>%
   select(-species_after_correction, -genus_after_correction, -family_after_correction) 
-
-
-
