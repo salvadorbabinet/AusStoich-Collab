@@ -8,7 +8,7 @@ library(V.PhyloMaker2)
 
 ##########---------Data Import---------##########
 #from 02 Data Import
-all_data <- read.csv(
+all_data <- read_csv(
   file = here('Inputs', 'AusStoich_merged_final.csv'),
   na = c('', 'NA', '#N/A','uncertain'),
   col_types = cols(
@@ -45,7 +45,8 @@ austraits_all_pos_sp <- phylo.maker(sp.list = austraits_all_pos_sp_df,
                                     nodes = nodes.info.1.LCVP,
                                     scenarios="S3")
 #with this object can write .tre file, however it is already in Inputs
-
+#write.tree(austraits_all_pos_sp$scenario.3, "Inputs/Trees/austraits_all_pos_sp.tre")
+    
 austraits_all_pos_sp_tree<- read.tree(here("Inputs/Trees/austraits_all_pos_sp.tre"))
 #plot(austraits_all_pos_sp_tree, cex= 0.1)
 
