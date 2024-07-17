@@ -15,7 +15,7 @@ all_data <- read_csv(
   )
 )
 
-#LCVP name standardization - derivation in phylogeny script
+# LCVP name standardization - derivation in phylogeny script
 naming_corrections <- read_csv(here('Inputs', 'all_naming_corrections.csv'))
 
 all_corrected_data <- all_data %>%
@@ -28,3 +28,5 @@ all_corrected_data <- all_data %>%
     family = ifelse(!is.na(family_after_correction), family_after_correction, family)
   ) %>%
   select(-species_after_correction, -genus_after_correction, -family_after_correction) 
+
+rm(naming_corrections)
