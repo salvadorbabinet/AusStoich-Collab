@@ -1,13 +1,10 @@
 # AusStoich Exploratory Data Analysis 
 # Libraries & functions 
 library(here)
-library(rlang)
 library(corrplot)
 library(tidyverse)
 
 histogram <- function(data, variable, bins = NULL, ylim = NULL) {
-  label <- englue('{{variable}}')
-  
   ggplot(data, aes(x = {{variable}})) + 
     geom_histogram(bins = bins) + 
     coord_cartesian(ylim = ylim) +
@@ -31,7 +28,7 @@ summarize_cont <- function(data, variable, grouping = NULL) {
 # Categorical variables 
 all_data |> count(across(woodiness:putative_BNF))
 all_data |> filter(woodiness == 1 & reclass_life_history == 'short') |> 
-  distinct(species_binom) 
+  distinct(species_binom) # Ambiguous, look up species / set as NA accordingly
 
 
 # Variation ---------------------------------------------------------------
@@ -53,7 +50,7 @@ outliers <- all_data |> filter(leaf_P_per_dry_mass > 9) |> bind_rows(outliers)
 
 summarize_cont(all_data, leaf_P_per_dry_mass)
 
-all_data |> histogram(leaf_C_per_dry_mass, 80) # C = 678, 195 (Wills) is weird 
+all_data |> histogram(leaf_C_per_dry_mass, 80) # C = 678, 195 (Wills), both Dong, & 235 weird 
 outliers <- all_data |> filter(leaf_C_per_dry_mass > 650) |> bind_rows(outliers)
 outliers <- all_data |> filter(leaf_C_per_dry_mass < 250) |> bind_rows(outliers)
 
