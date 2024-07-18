@@ -75,11 +75,13 @@ all_data |> histogram(AET, 50)
 
 # Co-variation 
 # Pearson Correlation Matrix (could also do Kendall or Spearman coeffs.)
-corr_matrix <- cont_data |> 
+corr_matrix <- aus_data |> 
+  select(where(is.numeric)) |> 
   select(!c(Unique_ID, NP_ratio, CN_ratio, CP_ratio)) |> 
   mutate(lat_deg = abs(lat_deg)) |> # Note abs(lat) - should this pass to all data? 
   cor(use = 'pairwise.complete.obs')  # complete.obs / na.or.complete / pairwise.complete.obs
 
+corr_matrix
 corr_matrix |> corrplot(method = 'ellipse', tl.col = 'black')
 
 # Iterate through matrix to pick out non-correlated combinations ? 
