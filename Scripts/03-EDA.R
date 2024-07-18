@@ -7,8 +7,7 @@ library(tidyverse)
 histogram <- function(data, variable, bins = NULL, ylim = NULL) {
   ggplot(data, aes(x = {{variable}})) + 
     geom_histogram(bins = bins) + 
-    coord_cartesian(ylim = ylim) +
-    labs(x = label)
+    coord_cartesian(ylim = ylim)
 }
 
 summarize_cont <- function(data, variable, grouping = NULL) {
@@ -41,18 +40,17 @@ for (i in 4:ncol(cont_data)) {
 # Closer look...
 # ...at plant traits 
 all_data |> histogram(leaf_N_per_dry_mass, 80) # N = 75 is weird, entire Geange data set is suspect 
-outliers <- all_data |> filter(leaf_N_per_dry_mass > 60) # |> bind_rows(outliers)
+outlier_candidates <- all_data |> filter(leaf_N_per_dry_mass > 60) # |> bind_rows(outliers)
 
 summarize_cont(all_data, leaf_N_per_dry_mass)
 
 all_data |> histogram(leaf_P_per_dry_mass, 80) # P = 9.99 is weird 
-outliers <- all_data |> filter(leaf_P_per_dry_mass > 9) |> bind_rows(outliers)
+outlier_candidates <- all_data |> filter(leaf_P_per_dry_mass > 9) |> bind_rows(outliers)
 
 summarize_cont(all_data, leaf_P_per_dry_mass)
 
 all_data |> histogram(leaf_C_per_dry_mass, 80) # C = 678, 195 (Wills), both Dong, & 235 weird 
-outliers <- all_data |> filter(leaf_C_per_dry_mass > 650) |> bind_rows(outliers)
-outliers <- all_data |> filter(leaf_C_per_dry_mass < 250) |> bind_rows(outliers)
+outlier_candidates <- all_data |> filter(leaf_C_per_dry_mass > 650 | leaf_C_per_dry_mass < 250) |> bind_rows(outliers)
 
 summarize_cont(all_data, leaf_C_per_dry_mass)
 
