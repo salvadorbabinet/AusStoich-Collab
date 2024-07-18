@@ -3,6 +3,7 @@
 library(here)
 library(tidyverse)
 library(tidymodels)
+tidymodels_prefer()
 
 # Data import
 all_data <- read_csv(
@@ -16,16 +17,5 @@ all_data <- read_csv(
     )
   )
 
-cont_data <- all_data |> select(where(is.numeric))
-
-# Quick distributions (see 01-EDA)
-histogram <- function(data, value) {
-  ggplot(data, aes(x = {{value}})) + geom_histogram(bins = 35)
-}
-
-print(colnames(cont_data))
-
-for (i in 4:ncol(cont_data)) {
-  print(histogram(cont_data, cont_data[[i]]))
-}
+cont_data <- all_data |> select(where(is.numeric)) # |> select(leaf_N_per_dry_mass:temp_seasonality)
 
