@@ -4,11 +4,13 @@ library(dplyr)
 library(ape)
 library(devtools)
 devtools::install_github("jinyizju/V.PhyloMaker2")
-library(V.PhyloMaker2)
+library(ggtree)
+library(tidytree)
+library(treeio)
 
 ##########---------Data Import---------##########
 #from 02 Data Import
-all_data <- read.csv(
+all_data <- read_csv(
   file = here('Inputs', 'AusStoich_merged_final.csv'),
   na = c('', 'NA', '#N/A','uncertain'),
   col_types = cols(
@@ -35,6 +37,7 @@ all_corrected_data <- all_data %>%
 
 #remove outliers from continuous traits as well as structure analysis
 rm(all_data)
+rm(naming_corrections)
 
 ##########---------austraits_all_pos_sp.tre derivation---------##########
 austraits_all_pos_sp_df <- read_csv(here('Inputs', 'Supplemental Inputs - Sofia',
@@ -45,6 +48,8 @@ austraits_all_pos_sp <- phylo.maker(sp.list = austraits_all_pos_sp_df,
                                     nodes = nodes.info.1.LCVP,
                                     scenarios="S3")
 #with this object can write .tre file, however it is already in Inputs
+write.tree(austraits_all_pos_sp$scenario.3,
+           "Inputs/Trees/austraits_all_pos_sp.tre")
 
 austraits_all_pos_sp_tree<- read.tree(here("Inputs/Trees/austraits_all_pos_sp.tre"))
 #plot(austraits_all_pos_sp_tree, cex= 0.1)
@@ -55,6 +60,11 @@ library(tidytree)
 library(treeio)
 
 austraits_all_pos_sp_tree_tib <- as_tibble(austraits_all_pos_sp_tree)
+
+nutrient_data <- all_corrected_data[, c("species_binom", "leaf_N_per_dry_mass",
+                              "leaf_P_per_dry_mass", "leaf_C_per_dry_mass")]
+
+
 #use left join to join with nutrient data
 #need to average this data first 
 #avg_nutrient_df <- aggregate(. ~ species_binom, data = nutrient_df, FUN = mean)
@@ -70,7 +80,7 @@ all_pos_sp_all_data <- all_pos_sp_all_data[,c("species_binom", "family", "genus"
                                               "woodiness", "reclass_life_history", "putative_BNF",
                                               "myc_type", "leaf_N_per_dry_mass", "leaf_P_per_dry_mass", 
                                               "leaf_C_per_dry_mass", "NP_ratio", "CN_ratio", "CP_ratio")]
-#end of all_pos_sp_all dataframe derivation
+#end of all_pos_sp_all tib derivation
 
 p <- ggtree(austraits_all_pos_sp_tree) + geom_tiplab() + xlim_tree(0.1)
 plot(p)
@@ -82,10 +92,13 @@ ggtree(austraits_all_pos_sp_tree, branch.length = "none",
        layout = "circular") + geom_nodelab()
 
 
+
+
 ##########---------austraits_one_rep_per_gen.tre & genera lost---------##########
 
 austraits_one_rep_per_gen_tree<- read.tree(here("Inputs/Trees/austraits_one_rep_per_gen.tre"))
 #derivation of this .tre in supplemental scripts - LCVP & early phylogeny
+#ensure ichnocarpus is in here
 
 plot(austraits_one_rep_per_gen_tree, cex= 0.1)
 ggtree(austraits_one_rep_per_gen_tree, branch.length = "none",
