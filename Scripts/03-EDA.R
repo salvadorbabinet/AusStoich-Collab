@@ -24,9 +24,19 @@ summarize_cont <- function(data, variable, grouping = NULL) {
   )
 }
 
+# Investigating missing data 
+# All entries with unexpected NAs (not C and P or ratios)
+missing <- aus_data |> filter(if_any(!leaf_P_per_dry_mass:CP_ratio, is.na))
+missing |> # Print unexpected column names with NAs 
+  summarize(across(everything(), \(x) sum(is.na(x)))) |> 
+  pivot_longer(everything()) |> 
+  filter(value > 0) |> 
+  print(n = Inf)
+
+
 # Categorical variables 
-all_data |> count(across(woodiness:putative_BNF))
-all_data |> filter(woodiness == 1 & reclass_life_history == 'short') |> 
+aus_data |> count(across(woodiness:putative_BNF))
+aus_data |> filter(woodiness == 1 & reclass_life_history == 'short') |> 
   distinct(species_binom) # Ambiguous, look up species / set as NA accordingly
 
 
