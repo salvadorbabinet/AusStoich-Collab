@@ -40,7 +40,7 @@ missing_soil |> select(c(observation_id, species_binom, lat_deg:long_deg, SN_tot
 aus_data |> filter(dataset_id == 'EsperonRodriguez_2020') # Both datasets have more entries than these NA ones 
 
 # NPP and climate 
-missing_seasonality <- missing |> filter(is.na(NPP)) # All from Hayes_2014 
+missing_climate_npp <- missing |> filter(is.na(NPP)) # All from Hayes_2014 
 missing_seasonality |> select(c(observation_id, species_binom, lat_deg:long_deg, NPP:temp_seasonality))
 aus_data |> filter(dataset_id == 'Hayes_2014') # But many more Hayes_2014 entries w/ seasonality 
 
@@ -93,6 +93,7 @@ all_data |> filter(CEC_total_0_30 > 30) |>
 all_data |> histogram(MAT, 80) 
 all_data |> histogram(NPP, 20) 
 all_data |> histogram(AET, 50) 
+
 
 # Co-variation 
 # Pearson Correlation Matrix (could also do Kendall or Spearman coeffs.)
