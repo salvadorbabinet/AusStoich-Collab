@@ -5,9 +5,17 @@ library(tidyverse)
 library(tidymodels)
 tidymodels_prefer()
 
+library(corrplot)
 library(bestNormalize)
 library(patchwork)
 library(ggforce)
+
+# Focusing on leaf N outcome to start 
+# Correlation plot 
+aus_data |> select(!Unique_ID:myc_type) |> 
+  select(!leaf_P_per_dry_mass:CP_ratio) |> 
+  cor(use = 'pairwise.complete.obs') |> 
+  corrplot(method = 'ellipse', tl.col = 'black')
 
 # Data split 
 aus_split <- aus_data |> 
@@ -45,18 +53,64 @@ aus_pca <- aus_rec |>
   step_pca(all_numeric_predictors(), num_comp = 4) |> 
   prep() 
 
-# Access loadings 
-pca_extract <- aus_pca$steps[[4]] |> # Subset PCA step 
-  tidy() |> 
-  mutate(component = parse_number(component))
+# Variance coverage and loadings 
+pca_step <- aus_pca$steps[[4]]
 
-pca_extract |> 
+pca_variance <- pca_step |> tidy(type = 'variance') 
+pca_variance |> filter(terms == 'percent variance') 
+pca_variance |> filter(terms == 'cumulative percent variance') 
+
+pca_loadings <- pca_step |> # Subset PCA step 
+  tidy(type = 'coef') |> 
+  mutate(component = parse_number(component))
+pca_loadings |> 
   group_by(component) |> 
-  slice_max(abs(value), n = 5) |> 
-  print(n = 20)
+  slice_max(abs(value), n = 3) |> 
+  print(n = 15)
+
+# Loadings plot 
+pca_loadings |> filter(component == 1) |> 
+  # slice_max(abs(value), n = 10) |> 
+  ggplot(aes(y = terms, x = value)) +
+  geom_col() + 
+  labs(
+    title = 'PC1 Loadings Plot', 
+    x = 'Contribution', 
+    y = 'Term')
+
+pca_loadings |> filter(component < 5) |> 
+ggplot(aes(x = value, y = terms)) + 
+  geom_col() + 
+  facet_wrap(~component)
 
 # Then bake and plot components 
-aus_pca |> bake(new_data = aus_validate) |> ggplot(aes(x = .panel_x, y = .panel_y)) +
+aus_pca_processed <- aus_pca |> bake(new_data = aus_validate)
+
+# Plot w/o additional visualization 
+aus_pca_processed |> ggplot(aes(x = .panel_x, y = .panel_y)) +
   geom_point(alpha = 0.5, size = 0.5) +
   geom_autodensity(alpha = 0.3) +
   facet_matrix(vars(everything()), layer.diag = 2)
+
+# Bin and visualize outcome ? 
+aus_pca_processed |> bake(new_data = aus_validate) |> 
+  ggplot(aes(x = .panel_x, y = .panel_y, 
+      color = cut_number(leaf_N_per_dry_mass, 4), # Cut by interval or number ? 
+      fill = cut_number(leaf_N_per_dry_mass, 4)
+      )) +
+  geom_point(alpha = 0.5, size = 0.5) +
+  geom_autodensity(alpha = 0.3) +
+  facet_matrix(vars(everything()), layer.diag = 2) + 
+  labs(color = 'Foliar N Range', fill = 'Foliar N Range')
+
+# Major families ? 
+aus_pca_processed |> bake(new_data = aus_validate) |> 
+  ggplot(aes(x = .panel_x, y = .panel_y, 
+             color = ###, 
+             fill = ### 
+  )) +
+  geom_point(alpha = 0.5, size = 0.5) +
+  geom_autodensity(alpha = 0.3) +
+  facet_matrix(vars(everything()), layer.diag = 2) + 
+  labs(color = 'Foliar N Range', fill = 'Foliar N Range')
+
