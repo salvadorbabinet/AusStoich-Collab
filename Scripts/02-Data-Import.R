@@ -31,11 +31,12 @@ all_corrected_data <- all_data %>%
 
 # Outliers (only Fiona-confirmed, see 03-EDA for all candidates)
 outliers <- all_corrected_data |> filter(leaf_N_per_dry_mass > 60) 
-outliers <- all_data |> filter(leaf_P_per_dry_mass > 9) |> bind_rows(outliers)
-outliers <- all_data |> filter(leaf_C_per_dry_mass > 650 | leaf_C_per_dry_mass < 250) |> bind_rows(outliers)
+outliers <- all_corrected_data |> filter(leaf_P_per_dry_mass > 9) |> bind_rows(outliers)
+outliers <- all_corrected_data |> filter(leaf_C_per_dry_mass > 650 | leaf_C_per_dry_mass < 250) |> bind_rows(outliers)
+outliers <- all_corrected_data |> filter(is.na(SN_total_0_30)) |> bind_rows(outliers)
 
 outliers_removed_data <- all_corrected_data |> setdiff(outliers)
 
 # Set variable to use in subsequent scripts and remove intermediates 
-aus_data <- outliers_removed_data 
+aus_data <- outliers_removed_data |> relocate(species_binom, .before = woodiness)
 rm(all_data, naming_corrections, all_corrected_data, outliers_removed_data) 

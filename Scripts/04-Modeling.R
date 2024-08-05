@@ -7,6 +7,7 @@ tidymodels_prefer()
 
 library(bestNormalize)
 library(patchwork)
+library(ggforce)
 
 # Data split 
 aus_split <- aus_data |> 
@@ -51,7 +52,8 @@ pca_extract <- aus_pca$steps[[4]] |> # Subset PCA step
 
 pca_extract |> 
   group_by(component) |> 
-  slice_max(abs(value), n = 3)
+  slice_max(abs(value), n = 5) |> 
+  print(n = 20)
 
 # Then bake and plot components 
 aus_pca |> bake(new_data = aus_validate) |> ggplot(aes(x = .panel_x, y = .panel_y)) +
