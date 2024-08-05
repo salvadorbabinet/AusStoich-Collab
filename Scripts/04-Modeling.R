@@ -40,4 +40,14 @@ p1 + p2
 
 aus_pca <- aus_rec |> 
   step_pca(all_numeric_predictors(), num_comp = 4) |> 
-  prep()
+  prep() 
+
+# Access loadings here ? 
+# 
+# 
+
+# Then bake and plot components 
+aus_pca |> bake(new_data = aus_validate) |> ggplot(aes(x = .panel_x, y = .panel_y)) +
+  geom_point(alpha = 0.5, size = 0.5) +
+  geom_autodensity(alpha = 0.3) +
+  facet_matrix(vars(everything()), layer.diag = 2)
