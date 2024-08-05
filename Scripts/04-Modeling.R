@@ -8,7 +8,6 @@ tidymodels_prefer()
 library(bestNormalize)
 library(patchwork)
 
-# Initial PCA recipe 
 # Data split 
 aus_split <- aus_data |> 
   select(!Unique_ID:myc_type) |> 
@@ -17,12 +16,14 @@ aus_split <- aus_data |>
 aus_train <- training(aus_split)
 aus_validate <- validation(aus_split)
 
+# Initial recipe with PCA pre-requirements 
 aus_rec <- recipe(leaf_N_per_dry_mass ~ ., data = aus_train) |> 
   step_zv(all_numeric_predictors()) |> 
   step_orderNorm(all_numeric_predictors()) |> 
   step_normalize(all_numeric_predictors()) |> 
   prep()
 
+# Check scaling and normalizing 
 aus_rec_processed <- bake(aus_rec, new_data = aus_validate)
 p1 <- aus_validate |> 
   ggplot(aes(x = temp_seasonality)) + 
@@ -38,13 +39,19 @@ p2 <- aus_rec_processed |>
 
 p1 + p2
 
+# Add PCA step 
 aus_pca <- aus_rec |> 
   step_pca(all_numeric_predictors(), num_comp = 4) |> 
   prep() 
 
-# Access loadings here ? 
-# 
-# 
+# Access loadings 
+pca_extract <- aus_pca$steps[[4]] |> # Subset PCA step 
+  tidy() |> 
+  mutate(component = parse_number(component))
+
+pca_extract |> 
+  group_by(component) |> 
+  slice_max(abs(value), n = 3)
 
 # Then bake and plot components 
 aus_pca |> bake(new_data = aus_validate) |> ggplot(aes(x = .panel_x, y = .panel_y)) +
