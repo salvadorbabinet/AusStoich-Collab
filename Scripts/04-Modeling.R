@@ -70,15 +70,19 @@ p1 + p2
 aus_pca <- aus_rec |> 
   step_pca(all_numeric_predictors(), num_comp = 4) |> 
   prep() 
+aus_pca
 
 # Variance coverage and loadings 
-pca_step <- aus_pca$steps[[4]]
+pca_extract <- aus_pca$steps[[4]]
+glimpse(pca_extract)
 
-pca_variance <- pca_step |> tidy(type = 'variance') 
-pca_variance |> filter(terms == 'percent variance') 
-pca_variance |> filter(terms == 'cumulative percent variance') 
+pca_variance <- pca_extract |> tidy(type = 'variance') 
+pca_variance |> 
+  filter(terms %in% c('percent variance', 'cumulative percent variance')) |> 
+  pivot_wider(names_from = terms, values_from = value) |> 
+  select(!id)
 
-pca_loadings <- pca_step |> # Subset PCA step 
+pca_loadings <- pca_extract |> # Subset PCA step 
   tidy(type = 'coef') |> 
   mutate(component = parse_number(component))
 pca_loadings |> 
