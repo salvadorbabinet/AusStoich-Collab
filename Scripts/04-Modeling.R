@@ -6,31 +6,49 @@ library(tidymodels)
 tidymodels_prefer()
 
 library(corrplot)
-library(bestNormalize)
 library(patchwork)
 library(ggforce)
+library(bestNormalize)
 
-# Focusing on leaf N outcome to start 
+
+# Starting with leaf N outcome 
 # Correlation plot 
 aus_data |> select(!Unique_ID:myc_type) |> 
   select(!leaf_P_per_dry_mass:CP_ratio) |> 
   cor(use = 'pairwise.complete.obs') |> 
   corrplot(method = 'ellipse', tl.col = 'black')
 
+
 # Data split 
 aus_split <- aus_data |> 
-  select(!Unique_ID:myc_type) |> 
-  select(!leaf_P_per_dry_mass:CP_ratio) |> 
-  initial_validation_split(prop = c(0.8, 0.1), strata = leaf_N_per_dry_mass)
+  select(!c(Unique_ID, leaf_P_per_dry_mass:CP_ratio)) |> 
+  initial_split(prop = 0.8, strata = leaf_N_per_dry_mass)
 aus_train <- training(aus_split)
-aus_validate <- validation(aus_split)
+aus_test <- testing(aus_split)
+
+n1 <- ggplot(aus_data, aes(x = leaf_N_per_dry_mass)) + 
+  geom_histogram() + 
+  ggtitle('All data')
+n2 <- ggplot(aus_train, aes(x = leaf_N_per_dry_mass)) + 
+  geom_histogram() + 
+  ggtitle('Training data')
+n3 <- ggplot(aus_test, aes(x = leaf_N_per_dry_mass)) + 
+  geom_histogram() + 
+  ggtitle('Testing data')
+
+# Check leaf N stratification 
+n1 + n2 + n3 
+rm(n1, n2, n3)
+
 
 # Initial recipe with PCA pre-requirements 
 aus_rec <- recipe(leaf_N_per_dry_mass ~ ., data = aus_train) |> 
+  update_role(dataset_id:myc_type, new_role = 'Factor') |> 
   step_zv(all_numeric_predictors()) |> 
   step_orderNorm(all_numeric_predictors()) |> 
   step_normalize(all_numeric_predictors()) |> 
   prep()
+aus_rec
 
 # Check scaling and normalizing 
 aus_rec_processed <- bake(aus_rec, new_data = aus_validate)

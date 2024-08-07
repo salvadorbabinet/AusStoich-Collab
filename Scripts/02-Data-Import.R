@@ -37,6 +37,6 @@ outliers <- all_corrected_data |> filter(is.na(SN_total_0_30)) |> bind_rows(outl
 
 outliers_removed_data <- all_corrected_data |> setdiff(outliers)
 
-# Set variable to use in subsequent scripts and remove intermediates 
+# Set aus_data to use in subsequent scripts and remove intermediates 
 aus_data <- outliers_removed_data |> relocate(species_binom, .before = woodiness)
 rm(all_data, naming_corrections, all_corrected_data, outliers_removed_data) 
