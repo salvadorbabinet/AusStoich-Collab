@@ -5,7 +5,7 @@ library(tidyverse)
 
 # Data import (following structure adjustments from 01)
 all_data <- read_csv(
-  file = here('Inputs', 'ausdata_merged_v2.csv'),
+  file = here('Inputs', 'ausdata_merged_v3.csv'),
   na = c('', 'NA', '#N/A','uncertain'),
   col_types = cols(
     woodiness = readr::col_factor(c('0', '1')),
@@ -38,4 +38,4 @@ outliers_removed_data <- all_corrected_data |> setdiff(outliers)
 
 # Set variable to use in subsequent scripts and remove intermediates 
 aus_data <- outliers_removed_data 
-rm(all_data, naming_corrections, all_corrected_data, outliers_removed_data) 
+rm(all_data, naming_corrections, all_corrected_data, outliers_removed_data, outliers) 
