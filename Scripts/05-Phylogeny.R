@@ -6,12 +6,14 @@ library(ggtree)
 library(tidytree)
 library(treeio)
 library(ggtreeExtra)
+library(phytools)
+library(V.PhyloMaker2)
 
 ########------------------Data Import------------------########
 # Ran 02 - Data import file
 aus_data <- aus_data
 
-########------------------Function Definitions------------------###
+########------------------Function Definitions------------------#######
 #for parsing through aus_data
 #input: dataframe in aus_data format, with only species of interest selected
 
@@ -55,7 +57,7 @@ average_nutrient_data <- function(df) {
 #########-------------austraits_all_pos_sp.tre derivation-------------#########
 austraits_all_pos_sp_df <- read_csv(here('Inputs', 'Supplemental Inputs - Sofia',
                                          'all_pos_austraits_LCVP_sp.csv'))
-#sesuvium_portulacastrum scrapped during outliers
+#sesuvium_portulacastrum from all pos sp csv due to being an outlier
 
 austraits_all_pos_sp <- phylo.maker(sp.list = austraits_all_pos_sp_df,
                                     tree = GBOTB.extended.LCVP,
@@ -113,18 +115,23 @@ extract_trait_values <- function(tree_tib, label_col, trait_col, cut) {
 
 ########---------austraits_all_pos_sp.tre plots---------########
 
-#start of all_pos_sp_all_data derivation
+#-----start of all_pos_sp_all_data derivation
 all_pos_sp_data <- aus_data[aus_data$species_binom %in%
                                             austraits_all_pos_sp_df$species, ]
 
 all_pos_sp_data <- select_relevant_columns(all_pos_sp_data)
-all_pos_sp_data <- add_CV_columns(all_pos_sp_data) #CV = NA can mean only one entry per that species
-#end of all_pos_sp_all  derivation
+all_pos_sp_data <- add_CV_columns(all_pos_sp_data)
 
-#avg_all_pos_sp_all  derivation
-avg_all_pos_sp_data <- average_nutrient_data(all_pos_sp_data) #831 entries for some reason
-#look into this later
-length(unique(avg_all_pos_sp_data$species_binom)) #830 so ok
+#CV = NA can mean only one entry per that species
+#CV = 0 means no variation for that species
+#------end of all_pos_sp_all derivation
+
+
+#------avg_all_pos_sp derivation
+avg_all_pos_sp_data <- average_nutrient_data(all_pos_sp_data)
+length(unique(avg_all_pos_sp_data$species_binom))
+#-----end of avg_all_pos_sp derivation
+
 
 all_pos_sp_plot <- ggtree(austraits_all_pos_sp_tree) +
   geom_tippoint(data = avg_all_pos_sp_data, mapping = aes(colour = family))
@@ -182,13 +189,6 @@ all_pos_sp_circular_plot + geom_fruit(
   stat = "identity") + ggtitle("Average Leaf N") 
 
 
-all_pos_sp_circular_plot + geom_fruit(
-  data = avg_all_pos_sp_data,
-  geom = geom_bar,
-  mapping = aes(x = avg_leaf_N, y = species_binom),
-  orientation = "y",
-  stat = "identity") + ggtitle("Average Leaf N") +
-
 
 #scrap 
 p <- ggtree(austraits_all_pos_sp_tree) + geom_tiplab() + xlim_tree(0.1)
@@ -237,6 +237,6 @@ lambda <- phylosig(austraits_all_pos_sp_tree, trait_data,
                    method = "lambda") 
 print(lambda)
 
-
+#try it with 80 ITS tree
 
 

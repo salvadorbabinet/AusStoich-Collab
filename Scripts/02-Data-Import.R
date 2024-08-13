@@ -5,7 +5,7 @@ library(tidyverse)
 
 # Data import (following structure adjustments from 01)
 all_data <- read_csv(
-  file = here('Inputs', 'ausdata_merged_v3.csv'),
+  file = here('Inputs', 'ausdata_merged_v3_SQ.csv'),
   na = c('', 'NA', '#N/A','uncertain'),
   col_types = cols(
     woodiness = readr::col_factor(c('0', '1')),
