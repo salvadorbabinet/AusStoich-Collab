@@ -53,7 +53,7 @@ aus_data |> filter(woodiness == 1 & reclass_life_history == 'short') |>
 
 # Variation ---------------------------------------------------------------
 # Quick look at continuous distributions via iteration 
-cont_data <- all_corrected_data |> select(where(is.numeric))
+cont_data <- aus_data |> select(where(is.numeric))
 for (i in 4:ncol(cont_data)) {
   print(histogram(cont_data, cont_data[[i]], bins = 50))
 }
@@ -89,13 +89,15 @@ all_data |> histogram(CEC_total_0_30, 80)
 all_data |> filter(CEC_total_0_30 > 30) |> 
   select(dataset_id, species_binom, lat_deg, long_deg) # Same site as high N 
 
+v3_merge_error <- aus_data |> filter(precipitation > 1000)
+
 # Fiona recommends NPP / AET investigation 
 all_data |> histogram(MAT, 80) 
 all_data |> histogram(NPP, 20) 
 all_data |> histogram(AET, 50) 
 
 
-# Co-variation 
+# Co-variation ------------------------------------------------------------
 # Pearson Correlation Matrix (could also do Kendall or Spearman coeffs.)
 corr_matrix <- aus_data |> 
   select(where(is.numeric)) |> 
@@ -106,6 +108,29 @@ corr_matrix <- aus_data |>
 corr_matrix
 corr_matrix |> corrplot(method = 'ellipse', tl.col = 'black')
 
-# Iterate through matrix to pick out non-correlated combinations ? 
-# TBD 
+# Leaf N by predictors 
+# Start with soil N (and visualize by major family)
+aus_data |> count(family) |> arrange(desc(n))
 
+aus_data |> filter(SN_total_0_30 < 50) |> 
+  ggplot(
+    aes(x = SN_total_0_30, 
+        y = leaf_N_per_dry_mass,
+        color = family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae')
+        )) + 
+  geom_point(alpha = 0.4) + 
+  labs(color = 'family') +
+  theme_bw() 
+
+temp_data <- aus_data |> filter(SN_total_0_30 < 50)
+
+ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + 
+  geom_point(data = filter(temp_data, !family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae'))) +  
+  geom_point(data = filter(temp_data, family == 'Myrtaceae'), color = 'red') + 
+  geom_point(data = filter(temp_data, family == 'Fabaceae'), color = 'cyan') + 
+  geom_point(data = filter(temp_data, family == 'Proteaceae'), color = 'orange') +
+  theme_bw() 
+
+
+
+ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + geom_point(data = aus_data |> filter(family == 'Myrtaceae'), color = 'red')
