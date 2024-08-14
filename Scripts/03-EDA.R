@@ -24,6 +24,13 @@ summarize_cont <- function(data, variable, grouping = NULL) {
   )
 }
 
+# WIP -- do not call 
+closer_inequality <- function(x, y) {
+  x_arranged <- arrange(x) 
+  y_arranged <- arrange(y) 
+  ifelse()
+}
+
 
 # Verify data join 
 # Create data objects 
@@ -49,11 +56,22 @@ trait_data_clean |> filter(is.na(lat_deg) | is.na(long_deg))
 
 env_data_clean |> count(lat_deg, long_deg) |> filter(n > 1)
 
-# Join data 
+# Join data... 
+# By closest lower value... what about if higher value is closer? 
+merged_data_rolling <- trait_data_clean |> left_join(
+  env_data_clean, 
+  join_by(closest(lat_deg >= lat_deg), closest(long_deg >= long_deg))
+  ) |> 
+  relocate(lat_deg.y:long_deg.y, .after = long_deg.x)
+
+# Within a rounding range 
+# merged_data_overlap <- trait_data_clean |> left_join(
+#  env_data_clean, 
+#  join_by(between(lat_deg, lat_deg - 0.1, lat_deg + 0.1))
+#  )
 
 
-
-# Missing data ------------------------------------------------------------
+ # Missing data ------------------------------------------------------------
 # All entries with unexpected NAs (not C and P or ratios)
 missing <- aus_data |> filter(if_any(!leaf_P_per_dry_mass:CP_ratio, is.na))
 missing |> # Print unexpected column names with NAs 
