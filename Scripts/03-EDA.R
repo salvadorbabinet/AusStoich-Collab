@@ -24,6 +24,35 @@ summarize_cont <- function(data, variable, grouping = NULL) {
   )
 }
 
+
+# Verify data join 
+# Create data objects 
+trait_data <- read_csv(file = here('Inputs', 'Old', 'austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv'))
+trait_data_clean <- trait_data |> 
+  select(Unique_ID:CP_ratio) |> 
+  filter(!is.na(Unique_ID)) |> 
+  relocate(species_binom, .after = genus) |> 
+  relocate(lat_deg:long_deg, .before = Unique_ID)
+
+env_data <- read_csv(file = here('Inputs', 'Old', 'Aus-Stoich_gridded_env_data.csv'))
+env_data_clean <- env_data |> rename(
+  lat_deg = lat, 
+  long_deg = lon) |> 
+  select(!latlong_unique)
+
+clim_data <- read_csv(file = here('Inputs', 'Old', 'AusStoich_Seasonality_WorldClim30s.csv'))
+clim_data_clean <- clim_data |> rename(lat_deg = `latitude (deg)`, long_deg = `longitude (deg)`)
+
+# Verify keys 
+trait_data_clean |> count(lat_deg, long_deg, dataset_id) |> filter(n > 1)
+trait_data_clean |> filter(is.na(lat_deg) | is.na(long_deg))
+
+env_data_clean |> count(lat_deg, long_deg) |> filter(n > 1)
+
+# Join data 
+
+
+
 # Missing data ------------------------------------------------------------
 # All entries with unexpected NAs (not C and P or ratios)
 missing <- aus_data |> filter(if_any(!leaf_P_per_dry_mass:CP_ratio, is.na))
