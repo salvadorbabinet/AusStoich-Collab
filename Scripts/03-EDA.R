@@ -1,5 +1,5 @@
 # AusStoich Exploratory Data Analysis 
-# Libraries & functions 
+# Libraries & functions ---------------------------------------------------
 library(here)
 library(corrplot)
 library(tidyverse)
@@ -32,7 +32,7 @@ closer_inequality <- function(x, y) {
 }
 
 
-# Verify data join 
+# Data join check ---------------------------------------------------------
 # Create data objects 
 trait_data <- read_csv(file = here('Inputs', 'Old', 'austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv'))
 trait_data_clean <- trait_data |> 
@@ -46,11 +46,11 @@ trait_data_clean <- trait_data_clean |> bind_cols(lat_rows) |>
   rename(lat_row = `row(trait_data_clean[1])`) |> 
   relocate(lat_row, .before = lat_deg)
 
-env_data <- read_csv(file = here('Inputs', 'Old', 'Aus-Stoich_gridded_env_data.csv'))
+env_data <- read_csv(file = here('Inputs', 'Old', 'envdata.csv'))
 env_data_clean <- env_data |> rename(
   lat_deg = lat, 
   long_deg = lon) |> 
-  select(!latlong_unique) |> 
+  select(lat_deg:AET) |> 
   arrange(lat_deg)
 
 clim_data <- read_csv(file = here('Inputs', 'Old', 'AusStoich_Seasonality_WorldClim30s.csv'))
@@ -58,35 +58,37 @@ clim_data_clean <- clim_data |>
   rename(lat_deg = `latitude (deg)`, long_deg = `longitude (deg)`) |> 
   arrange(lat_deg)
 
+rm(trait_data, env_data, clim_data)
+
 # Verify keys 
 trait_data_clean |> count(lat_deg, long_deg) # 358 combinations 
-trait_data_clean |> filter(is.na(lat_deg) | is.na(long_deg))
+trait_data_clean |> filter(is.na(lat_deg) | is.na(long_deg)) 
 
-env_data_clean |> count(lat_deg, long_deg) |> filter(n > 1)
+env_data_clean |> count(lat_deg) |> filter(n > 1) 
+env_data_clean |> count(lat_deg, long_deg) |> filter(n > 1) 
 
 # Join data... 
 # By closest lower value... what about if higher value is closer? 
-merged_data_rolling <- trait_data_clean |> left_join(
-  env_data_clean, 
-  join_by(closest(lat_deg >= lat_deg), closest(long_deg >= long_deg))
-  ) |> 
-  relocate(lat_deg.y:long_deg.y, .after = long_deg.x)
-
-# ifelse()
+# merged_data_rolling <- trait_data_clean |> left_join(
+#   env_data_clean, 
+#   join_by(closest(lat_deg >= lat_deg), closest(long_deg >= long_deg))
+#   ) |> 
+#   relocate(lat_deg.y:long_deg.y, .after = long_deg.x)
 
 # Round then join 
 rounded_lat_deg <- round(trait_data_clean$lat_deg, digits = 4) |> tibble() 
-lat_rows <- row(rounded_lat_deg) |> tibble() 
 rounded_lat_deg <- rounded_lat_deg |> bind_cols(lat_rows) |> 
-  rename(lat_row = `row(rounded_lat_deg)`) |> 
-  rename(lat_deg = `round(trait_data_clean$lat_deg, digits = 4)`) |> 
-  relocate(lat_row, .before = lat_deg)
+  rename(lat_row = `row(trait_data_clean[1])`) |> 
+  rename(lat_deg_round = `round(trait_data_clean$lat_deg, digits = 4)`) |> 
+  relocate(lat_row, .before = lat_deg_round)
 
-trait_data_clean |> left_join(rounded_lat_deg, join_by(lat_row)) 
-merged_data_equality <- trait_data_clean |> left_join(env_data_clean, join_by(lat_deg)) |> 
-  relocate(long_deg.y, .after = long_deg.x)
+trait_data_clean <- trait_data_clean |> 
+  left_join(rounded_lat_deg, join_by(lat_row)) |> 
+  mutate(lat_deg = lat_deg_round) |> 
+  select(!c(lat_row, lat_deg_round))
+merged_data_equality <- trait_data_clean |> left_join(env_data_clean, join_by(lat_deg, long_deg))
 
-# Missing values 
+# Check for missing values due to merge error 
 merge_miss <- merged_data_equality |> filter(if_any(SN_total_0_30:PPT_mm, is.na))
 merge_miss
 
