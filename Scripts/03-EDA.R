@@ -41,6 +41,10 @@ trait_data_clean <- trait_data |>
   relocate(species_binom, .after = genus) |> 
   relocate(lat_deg:long_deg, .before = Unique_ID) |> 
   arrange(lat_deg)
+lat_rows <- row(trait_data_clean[1]) |> tibble() 
+trait_data_clean <- trait_data_clean |> bind_cols(lat_rows) |> 
+  rename(lat_row = `row(trait_data_clean[1])`) |> 
+  relocate(lat_row, .before = lat_deg)
 
 env_data <- read_csv(file = here('Inputs', 'Old', 'Aus-Stoich_gridded_env_data.csv'))
 env_data_clean <- env_data |> rename(
@@ -68,14 +72,19 @@ merged_data_rolling <- trait_data_clean |> left_join(
   ) |> 
   relocate(lat_deg.y:long_deg.y, .after = long_deg.x)
 
-ifelse()
+# ifelse()
 
 # Round then join 
 rounded_lat_deg <- round(trait_data_clean$lat_deg, digits = 4) |> tibble() 
-rows <- row(rounded_lat_deg) |> tibble() |> bind_cols(rounded_lat_deg)
+lat_rows <- row(rounded_lat_deg) |> tibble() 
+rounded_lat_deg <- rounded_lat_deg |> bind_cols(lat_rows) |> 
+  rename(lat_row = `row(rounded_lat_deg)`) |> 
+  rename(lat_deg = `round(trait_data_clean$lat_deg, digits = 4)`) |> 
+  relocate(lat_row, .before = lat_deg)
 
-
-trait_data_clean |> left_join(rounded_lat_deg, join_by())
+trait_data_clean |> left_join(rounded_lat_deg, join_by(lat_row)) 
+merged_data_equality <- trait_data_clean |> left_join(env_data_clean, join_by(lat_deg)) |> 
+  relocate(long_deg.y, .after = long_deg.x)
 
 # Within a rounding range 
 # merged_data_overlap <- trait_data_clean |> left_join(
