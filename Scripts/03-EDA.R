@@ -70,6 +70,13 @@ merged_data_rolling <- trait_data_clean |> left_join(
 
 ifelse()
 
+# Round then join 
+rounded_lat_deg <- round(trait_data_clean$lat_deg, digits = 4) |> tibble() 
+rows <- row(rounded_lat_deg) |> tibble() |> bind_cols(rounded_lat_deg)
+
+
+trait_data_clean |> left_join(rounded_lat_deg, join_by())
+
 # Within a rounding range 
 # merged_data_overlap <- trait_data_clean |> left_join(
 #  env_data_clean, 
