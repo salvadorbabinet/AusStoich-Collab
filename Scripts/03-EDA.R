@@ -86,6 +86,13 @@ trait_data_clean |> left_join(rounded_lat_deg, join_by(lat_row))
 merged_data_equality <- trait_data_clean |> left_join(env_data_clean, join_by(lat_deg)) |> 
   relocate(long_deg.y, .after = long_deg.x)
 
+# Missing values 
+merge_miss <- merged_data_equality |> filter(if_any(SN_total_0_30:PPT_mm, is.na))
+merge_miss
+
+env_data_clean |> filter(is.na(long_deg))
+trait_data_clean |> filter(is.na(long_deg))
+
 # Within a rounding range 
 # merged_data_overlap <- trait_data_clean |> left_join(
 #  env_data_clean, 
