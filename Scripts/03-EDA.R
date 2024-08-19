@@ -86,11 +86,11 @@ trait_data_clean <- trait_data_clean |>
   left_join(rounded_lat_deg, join_by(lat_row)) |> 
   mutate(lat_deg = lat_deg_round) |> 
   select(!c(lat_row, lat_deg_round))
-merged_data_equality <- trait_data_clean |> left_join(env_data_clean, join_by(lat_deg, long_deg))
+merged_data_equality <- trait_data_clean |> left_join(env_data_clean, join_by(lat_deg))
 
 # Check for missing values due to merge error 
-merge_miss <- merged_data_equality |> filter(if_any(SN_total_0_30:PPT_mm, is.na))
-merge_miss
+merge_miss <- merged_data_equality |> filter(if_any(SN_total_0_30:AET, is.na))
+merge_miss # Need to merge the few double latitude values separately to avoid many-to-many 
 
 env_data_clean |> filter(is.na(long_deg))
 trait_data_clean |> filter(is.na(long_deg))
