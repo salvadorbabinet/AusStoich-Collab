@@ -25,11 +25,11 @@ summarize_cont <- function(data, variable, grouping = NULL) {
 }
 
 # WIP -- do not call 
-closer_inequality <- function(x, y) {
-  x_arranged <- arrange(x) 
-  y_arranged <- arrange(y) 
-  ifelse()
-}
+# closer_inequality <- function(x, y) {
+#   x_arranged <- arrange(x) 
+#   y_arranged <- arrange(y) 
+#   ifelse()
+# }
 
 
 # Data join check ---------------------------------------------------------
@@ -41,10 +41,10 @@ trait_data_clean <- trait_data |>
   relocate(species_binom, .after = genus) |> 
   relocate(lat_deg:long_deg, .before = Unique_ID) |> 
   arrange(lat_deg)
-lat_rows <- row(trait_data_clean[1]) |> tibble() 
-trait_data_clean <- trait_data_clean |> bind_cols(lat_rows) |> 
-  rename(lat_row = `row(trait_data_clean[1])`) |> 
-  relocate(lat_row, .before = lat_deg)
+# lat_rows <- row(trait_data_clean[1]) |> tibble() 
+# trait_data_clean <- trait_data_clean |> bind_cols(lat_rows) |> 
+#   rename(lat_row = `row(trait_data_clean[1])`) |> 
+#   relocate(lat_row, .before = lat_deg)
 
 env_data <- read_csv(file = here('Inputs', 'Old', 'envdata.csv'))
 env_data_clean <- env_data |> rename(
@@ -76,24 +76,40 @@ env_data_clean |> count(lat_deg, long_deg) |> filter(n > 1)
 #   relocate(lat_deg.y:long_deg.y, .after = long_deg.x)
 
 # Round then join 
-rounded_lat_deg <- round(trait_data_clean$lat_deg, digits = 4) |> tibble() 
-rounded_lat_deg <- rounded_lat_deg |> bind_cols(lat_rows) |> 
-  rename(lat_row = `row(trait_data_clean[1])`) |> 
-  rename(lat_deg_round = `round(trait_data_clean$lat_deg, digits = 4)`) |> 
-  relocate(lat_row, .before = lat_deg_round)
+# Round latitude to 4 digits to match environment / climate data 
+trait_data_rounded_latlong <- trait_data_clean |> 
+  mutate(
+    lat_deg = round(lat_deg, digits = 4), 
+    long_deg = round(long_deg, digits = 3)
+    )
+double_lat <- trait_data_rounded_latlong |> filter(lat_deg %in% c(-33.3718, -30.2766, -30.2406, -16.0072))
 
-trait_data_clean <- trait_data_clean |> 
-  left_join(rounded_lat_deg, join_by(lat_row)) |> 
-  mutate(lat_deg = lat_deg_round) |> 
-  select(!c(lat_row, lat_deg_round))
-merged_data_equality <- trait_data_clean |> left_join(env_data_clean, join_by(lat_deg))
+# First merge unique latitude keys 
+trait_data_single_lat <- trait_data_rounded_latlong |> anti_join(double_lat, join_by(lat_deg))
+merged_data_equality <- trait_data_single_lat |> 
+  left_join(env_data_clean, join_by(lat_deg)) |> 
+  select(!long_deg.y) |> 
+  rename(long_deg = long_deg.x)
+
+# Mismatched latlongs 
+# mismatch <- merged_data_equality |> filter(long_deg.x != long_deg.y) |> 
+#   relocate(long_deg.y, .after = long_deg.x) # Rounded long_deg.y is 0.001 above long_deg.x in all cases 
+
+# Then add double latitude keys by longitude 
+double_lat <- double_lat |> left_join(env_data_clean)
+merged_data_equality <- merged_data_equality |> 
+  bind_rows(double_lat) |> 
+  arrange(lat_deg)
 
 # Check for missing values due to merge error 
 merge_miss <- merged_data_equality |> filter(if_any(SN_total_0_30:AET, is.na))
-merge_miss # Need to merge the few double latitude values separately to avoid many-to-many 
+merge_miss |> distinct(lat_deg, long_deg) 
 
 env_data_clean |> filter(is.na(long_deg))
 trait_data_clean |> filter(is.na(long_deg))
+
+merged_data_equality |> filter(lat_deg == -33.3718)
+env_data_clean |> filter(lat_deg == -33.3718)
 
 # Within a rounding range 
 # merged_data_overlap <- trait_data_clean |> left_join(
