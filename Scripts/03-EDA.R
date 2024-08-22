@@ -34,26 +34,31 @@ summarize_cont <- function(data, variable, grouping = NULL) {
 
 # Data join check ---------------------------------------------------------
 # Create data objects 
-trait_data <- read_csv(file = here('Inputs', 'Old', 'austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv'))
+trait_data <- read_csv(
+  file = here('Inputs', 'Old', 'austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv'),
+  na = c('', 'NA', '#N/A','uncertain')
+  )
 trait_data_clean <- trait_data |> 
   select(Unique_ID:CP_ratio) |> 
   filter(!is.na(Unique_ID)) |> 
   relocate(species_binom, .after = genus) |> 
   relocate(lat_deg:long_deg, .before = Unique_ID) |> 
   arrange(lat_deg)
-# lat_rows <- row(trait_data_clean[1]) |> tibble() 
-# trait_data_clean <- trait_data_clean |> bind_cols(lat_rows) |> 
-#   rename(lat_row = `row(trait_data_clean[1])`) |> 
-#   relocate(lat_row, .before = lat_deg)
 
-env_data <- read_csv(file = here('Inputs', 'Old', 'envdata.csv'))
+env_data <- read_csv(
+  file = here('Inputs', 'Old', 'envdata.csv'),
+  na = c('', 'NA', '#N/A','uncertain')
+  )
 env_data_clean <- env_data |> rename(
   lat_deg = lat, 
   long_deg = lon) |> 
   select(lat_deg:AET) |> 
   arrange(lat_deg)
 
-clim_data <- read_csv(file = here('Inputs', 'Old', 'AusStoich_Seasonality_WorldClim30s.csv'))
+clim_data <- read_csv(
+  file = here('Inputs', 'Old', 'AusStoich_Seasonality_WorldClim30s.csv'),
+  na = c('', 'NA', '#N/A','uncertain')
+  )
 clim_data_clean <- clim_data |> 
   rename(lat_deg = `latitude (deg)`, long_deg = `longitude (deg)`) |> 
   arrange(lat_deg)
@@ -76,18 +81,24 @@ env_data_clean |> count(lat_deg, long_deg) |> filter(n > 1)
 #   relocate(lat_deg.y:long_deg.y, .after = long_deg.x)
 
 # Round then join 
-# Round latitude to 4 digits to match environment / climate data 
-trait_data_rounded_latlong <- trait_data_clean |> 
+# Round latitude & longitude to match environment / climate data 
+trait_data_clean <- trait_data_clean |> 
   mutate(
     lat_deg = round(lat_deg, digits = 4), 
     long_deg = round(long_deg, digits = 3)
     )
-double_lat <- trait_data_rounded_latlong |> filter(lat_deg %in% c(-33.3718, -30.2766, -30.2406, -16.0072))
+
+double_lat <- trait_data_clean |> filter(lat_deg %in% c(-33.3718, -30.2766, -30.2406, -16.0072))
+
+clim_data_clean <- clim_data_clean |> mutate(long_deg = round(long_deg, digits = 3))
+env_clim_join <- env_data_clean |> left_join(clim_data_clean)
+
+rm(env_data_clean, clim_data_clean)
 
 # First merge unique latitude keys 
-trait_data_single_lat <- trait_data_rounded_latlong |> anti_join(double_lat, join_by(lat_deg))
-merged_data_equality <- trait_data_single_lat |> 
-  left_join(env_data_clean, join_by(lat_deg)) |> 
+trait_data_single_lat <- trait_data_clean |> anti_join(double_lat, join_by(lat_deg))
+joined_data_equality <- trait_data_single_lat |> 
+  left_join(env_clim_join, join_by(lat_deg)) |> 
   select(!long_deg.y) |> 
   rename(long_deg = long_deg.x)
 
@@ -96,26 +107,42 @@ merged_data_equality <- trait_data_single_lat |>
 #   relocate(long_deg.y, .after = long_deg.x) # Rounded long_deg.y is 0.001 above long_deg.x in all cases 
 
 # Then add double latitude keys by longitude 
-double_lat <- double_lat |> left_join(env_data_clean)
-merged_data_equality <- merged_data_equality |> 
+double_lat <- double_lat |> left_join(env_clim_join)
+joined_data_equality <- joined_data_equality |> 
   bind_rows(double_lat) |> 
   arrange(lat_deg)
 
+rm(trait_data_clean, trait_data_single_lat, double_lat, env_clim_join)
+
 # Check for missing values due to merge error 
-merge_miss <- merged_data_equality |> filter(if_any(SN_total_0_30:AET, is.na))
+merge_miss <- joined_data_equality |> filter(if_any(SN_total_0_30:AET, is.na))
 merge_miss |> distinct(lat_deg, long_deg) 
 
-env_data_clean |> filter(is.na(long_deg))
-trait_data_clean |> filter(is.na(long_deg))
+# Compare to manual merge 
+comparison_data <- joined_data_equality |> 
+  relocate(lat_deg:long_deg, .after = dataset_id) |> 
+  rename(
+    precipitation = PrecipSeasonality_WorldClim30s1,
+    temp_seasonality = TempSeasonality_WorldClim30s1
+  )
 
-merged_data_equality |> filter(lat_deg == -33.3718)
-env_data_clean |> filter(lat_deg == -33.3718)
+all_data <- read_csv(
+  file = here('Inputs', 'ausdata_merged_v3_SQ.csv'),
+  na = c('', 'NA', '#N/A','uncertain')
+  )
 
-# Within a rounding range 
-# merged_data_overlap <- trait_data_clean |> left_join(
-#  env_data_clean, 
-#  join_by(between(lat_deg, lat_deg - 0.1, lat_deg + 0.1))
-#  )
+all_data <- all_data |> 
+  relocate(lat_deg:long_deg, .after = dataset_id) |> 
+  relocate(species_binom, .after = genus) 
+
+all_data
+comparison_data
+
+mismatch <- all_data |> # Returns rows in manual data join without a match here 
+  anti_join(
+    comparison_data, # Should figure out how to iterate through all desired columns 
+    join_by(putative_BNF, leaf_N_per_dry_mass, SN_total_0_30, SP_total_0_30, NPP, MAT, precipitation, temp_seasonality)
+  ) 
 
 
 # Missing data ------------------------------------------------------------
