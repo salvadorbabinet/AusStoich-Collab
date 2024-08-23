@@ -91,9 +91,38 @@ trait_data_clean <- trait_data_clean |>
 double_lat <- trait_data_clean |> filter(lat_deg %in% c(-33.3718, -30.2766, -30.2406, -16.0072))
 
 clim_data_clean <- clim_data_clean |> mutate(long_deg = round(long_deg, digits = 3))
-env_clim_join <- env_data_clean |> left_join(clim_data_clean)
+clim_data_clean |> filter(if_any(PrecipSeasonality_WorldClim30s1:TempSeasonality_WorldClim30s1, is.na))
 
-rm(env_data_clean, clim_data_clean)
+env_clim_join <- env_data_clean |> left_join(clim_data_clean)
+rounding_mismatch <- env_clim_join |> filter(if_any(PrecipSeasonality_WorldClim30s1:TempSeasonality_WorldClim30s1, is.na)) 
+# long_deg rounded up by .001 from climate equivalents 
+
+# round up these values and join again 
+clim_data_rounded <- clim_data_clean |> semi_join(rounding_mismatch, join_by(lat_deg)) |>
+  filter(!is.na(PrecipSeasonality_WorldClim30s1)) |>
+  mutate(long_deg = long_deg + 0.001)
+
+env_clim_join <- env_clim_join |> left_join(clim_data_rounded, join_by(lat_deg, long_deg))
+
+env_clim_join <- env_clim_join |> 
+  mutate(
+    PrecipSeasonality_WorldClim30s1.x = if_else(
+      is.na(PrecipSeasonality_WorldClim30s1.x),
+      PrecipSeasonality_WorldClim30s1.y, 
+      PrecipSeasonality_WorldClim30s1.x
+    )
+  )|> 
+  mutate(
+    TempSeasonality_WorldClim30s1.x = if_else(
+      is.na(TempSeasonality_WorldClim30s1.x),
+      TempSeasonality_WorldClim30s1.y, 
+      TempSeasonality_WorldClim30s1.x
+    )
+  ) |> 
+  select(!c(PrecipSeasonality_WorldClim30s1.y, TempSeasonality_WorldClim30s1.y)) |> 
+  rename(precipitation = PrecipSeasonality_WorldClim30s1.x, temp_seasonality = TempSeasonality_WorldClim30s1.x)
+
+rm(env_data_clean, clim_data_clean, rounding_mismatch, clim_data_rounded)
 
 # First merge unique latitude keys 
 trait_data_single_lat <- trait_data_clean |> anti_join(double_lat, join_by(lat_deg))
@@ -114,17 +143,16 @@ joined_data_equality <- joined_data_equality |>
 
 rm(trait_data_clean, trait_data_single_lat, double_lat, env_clim_join)
 
-# Check for missing values due to merge error 
-merge_miss <- joined_data_equality |> filter(if_any(SN_total_0_30:AET, is.na))
-merge_miss |> distinct(lat_deg, long_deg) 
+# Check for missing values due to merge error (TD: turn into a function)
+merge_miss <- joined_data_equality |> filter(if_any(SN_total_0_30:precipitation, is.na))
+merge_miss |> distinct(lat_deg, long_deg) # Returns expected Esperon Rodriguez / Hayes env data and missing seasonality data (Schulze)
 
 # Compare to manual merge 
-comparison_data <- joined_data_equality |> 
-  relocate(lat_deg:long_deg, .after = dataset_id) |> 
-  rename(
-    precipitation = PrecipSeasonality_WorldClim30s1,
-    temp_seasonality = TempSeasonality_WorldClim30s1
-  )
+comparison_data <- joined_data_equality |> relocate(lat_deg:long_deg, .after = dataset_id) # |> 
+#   rename(
+#     precipitation = PrecipSeasonality_WorldClim30s1,
+#     temp_seasonality = TempSeasonality_WorldClim30s1
+#   )
 
 all_data <- read_csv(
   file = here('Inputs', 'ausdata_merged_v3_SQ.csv'),
@@ -136,12 +164,12 @@ all_data <- all_data |>
   relocate(species_binom, .after = genus) 
 
 all_data
-comparison_data
+comparison_data # Some NAs in climate data merge 
 
 mismatch <- all_data |> # Returns rows in manual data join without a match here 
   anti_join(
     comparison_data, # Should figure out how to iterate through all desired columns 
-    join_by(putative_BNF, leaf_N_per_dry_mass, SN_total_0_30, SP_total_0_30, NPP, MAT, precipitation, temp_seasonality)
+    join_by(leaf_N_per_dry_mass, SN_total_0_30, SP_total_0_30, NPP, MAT, precipitation, temp_seasonality)
   ) 
 
 
