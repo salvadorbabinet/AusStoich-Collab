@@ -109,8 +109,7 @@ all_data |> histogram(AET, 50)
 # Pearson Correlation Matrix (could also do Kendall or Spearman coeffs.)
 corr_matrix <- aus_data |> 
   select(where(is.numeric)) |> 
-  select(!c(Unique_ID, NP_ratio, CN_ratio, CP_ratio)) |> 
-  mutate(lat_deg = abs(lat_deg)) |> # Note abs(lat) - should this pass to all data? 
+  select(!c(Unique_ID, lat_deg, long_deg, NP_ratio, CN_ratio, CP_ratio)) |> 
   cor(use = 'pairwise.complete.obs')  # complete.obs / na.or.complete / pairwise.complete.obs
 
 corr_matrix
@@ -120,25 +119,41 @@ corr_matrix |> corrplot(method = 'ellipse', tl.col = 'black')
 # Start with soil N (and visualize by major family)
 aus_data |> count(family) |> arrange(desc(n))
 
-aus_data |> filter(SN_total_0_30 < 50) |> 
+aus_data |> 
   ggplot(
     aes(x = SN_total_0_30, 
         y = leaf_N_per_dry_mass,
         color = family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae')
         )) + 
   geom_point(alpha = 0.4) + 
-  labs(color = 'family') +
+  labs(color = 'In 3 major families?') +
   theme_bw() 
 
-temp_data <- aus_data |> filter(SN_total_0_30 < 50)
+aus_data |> ggplot(aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + 
+  geom_point(alpha = 0.2) + 
+  geom_smooth(method = 'lm', se = F)
 
-ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + 
-  geom_point(data = filter(temp_data, !family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae'))) +  
-  geom_point(data = filter(temp_data, family == 'Myrtaceae'), color = 'red') + 
-  geom_point(data = filter(temp_data, family == 'Fabaceae'), color = 'cyan') + 
-  geom_point(data = filter(temp_data, family == 'Proteaceae'), color = 'orange') +
-  theme_bw() 
+# Major families only 
+ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass, color = family)) + 
+  geom_point(
+    data = aus_data |> filter(family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae')), 
+    alpha = 0.4) + 
+  geom_smooth(
+    data = aus_data |> filter(family == 'Myrtaceae'), 
+    method = 'lm', 
+    se = F) +
+  geom_smooth(
+    data = aus_data |> filter(family == 'Fabaceae'), 
+    method = 'lm', 
+    se = F) +
+  geom_smooth(
+    data = aus_data |> filter(family == 'Proteaceae'), 
+    method = 'lm', 
+    se = F) +
+  geom_smooth(
+    data = aus_data,
+    method = 'lm',
+    se = F) +
+  theme_bw()
 
-
-
-ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + geom_point(data = aus_data |> filter(family == 'Myrtaceae'), color = 'red')
+# Major families and all data for comparison 
