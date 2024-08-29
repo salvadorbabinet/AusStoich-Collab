@@ -5,8 +5,6 @@ install.packages("plotrix")
 install.packages("tidytree")
 install.packages("dplyr")
 
-install.packages("BiocManager")
-BiocManager::install("ggtree")
 library(ape)
 library(phytools)
 library(nlme)
@@ -22,14 +20,6 @@ library(tibble)
 library(tidyverse)
 library(cowplot)
 
-
-
-#---------------- Function Definitions ----------------
-
-
-
-
-#------------------------------------------------------
 
 ITS_tree <- read.nexus("Inputs/ITS_tree.tre")
 ITS_tree_tib <- as_tibble(ITS_tree) #NA columns = internal nodes
