@@ -593,13 +593,3 @@ ggplot(nutrient_data, aes(x = leaf_N_per_dry_mass)) +
 ggplot(nutrient_data, aes(x = CP_ratio)) +
   geom_histogram(bins = 100) +
   labs(title = "All Species")
-
-
-
-
-
-
-
-
-
-          
