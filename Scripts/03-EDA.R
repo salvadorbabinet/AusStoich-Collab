@@ -156,6 +156,14 @@ ggplot(
   geom_smooth(method = "lm", se = F) +
   theme_bw()
 
-# Investigate different relationships across major families
+# Investigate relationships across major families
+# Foliar to environmental elements
 dot_plot_by_family(xvar = SN_total_0_30, yvar = leaf_N_per_dry_mass)
 dot_plot_by_family(xvar = SP_total_0_30, yvar = leaf_P_per_dry_mass)
+dot_plot_by_family(xvar = AP_total_0_30, yvar = leaf_P_per_dry_mass)
+dot_plot_by_family(xvar = SOC_total_0_30, yvar = leaf_C_per_dry_mass)
+
+# Foliar elements to each other
+dot_plot_by_family(xvar = leaf_P_per_dry_mass, yvar = leaf_N_per_dry_mass)
+dot_plot_by_family(xvar = leaf_C_per_dry_mass, yvar = leaf_N_per_dry_mass)
+dot_plot_by_family(xvar = leaf_C_per_dry_mass, yvar = leaf_P_per_dry_mass)
