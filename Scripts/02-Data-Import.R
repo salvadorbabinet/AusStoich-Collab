@@ -6,12 +6,12 @@ library(tidyverse)
 # Data import (following structure adjustments from 01)
 all_data <- read_csv(
   file = here('Inputs', 'ausdata_merged_v3_SQ.csv'),
-  na = c('NA'),
+  na = c('', 'NA', '#N/A','uncertain'),
   col_types = cols(
     woodiness = readr::col_factor(c('0', '1')),
     reclass_life_history = readr::col_factor(c('short', 'long')),
     putative_BNF = readr::col_factor(c('0', '1')),
-    myc_type = readr::col_factor(c('AM', 'EcM', 'EcM-AM', 'ErM', 'NM', 'NM-AM', 'uncertain'))
+    myc_type = readr::col_factor(c('AM', 'EcM', 'EcM-AM', 'ErM', 'NM', 'NM-AM'))
   )
 )
 
