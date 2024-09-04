@@ -1,8 +1,16 @@
 # AusStoich Exploratory Data Analysis 
 # Libraries & functions ---------------------------------------------------
 library(here)
+library(dplyr)
+library(ggplot2)
 library(corrplot)
-library(tidyverse)
+library(patchwork)
+
+library(httpgd)
+hgd()
+hgd_browse()
+
+# library(tidyverse)
 
 histogram <- function(data, variable, bins = NULL, ylim = NULL) {
   ggplot(data, aes(x = {{variable}})) + 
@@ -24,12 +32,30 @@ summarize_cont <- function(data, variable, grouping = NULL) {
   )
 }
 
-# WIP -- do not call 
-# closer_inequality <- function(x, y) {
-#   x_arranged <- arrange(x) 
-#   y_arranged <- arrange(y) 
-#   ifelse()
-# }
+dot_plot_by_family <- function(data = aus_data, xvar, yvar) {
+  p1 <- ggplot(data, aes(x = {{xvar}}, y = {{yvar}})) +
+    geom_point(alpha = 0.2, size = 0.6) +
+    geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+    theme_bw()
+  p2 <- ggplot(mapping = aes(x = {{xvar}}, y = {{yvar}})) +
+    geom_point(
+      data = filter(data, !family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      alpha = 0.2,
+      size = 0.6) +
+    geom_smooth(data = data, method = "lm", linetype = "dashed", se = FALSE) +
+    geom_point(
+      data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      alpha = 0.2,
+      size = 0.6) +
+    geom_smooth(
+      data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      method = "lm",
+      se = FALSE) +
+    theme_bw()
+  p1 + p2
+}
 
 
 # Missing data ------------------------------------------------------------
@@ -51,7 +77,6 @@ aus_data |> filter(dataset_id == 'EsperonRodriguez_2020') # Both datasets have m
 missing_climate_npp <- missing |> filter(is.na(NPP)) # All from Hayes_2014 
 missing_seasonality |> select(c(observation_id, species_binom, lat_deg:long_deg, NPP:temp_seasonality))
 aus_data |> filter(dataset_id == 'Hayes_2014') # But many more Hayes_2014 entries w/ seasonality 
-
 
 # Categorical variables 
 aus_data |> count(across(woodiness:putative_BNF))
@@ -115,45 +140,22 @@ corr_matrix <- aus_data |>
 corr_matrix
 corr_matrix |> corrplot(method = 'ellipse', tl.col = 'black')
 
-# Leaf N by predictors 
+# Leaf N by predictors
 # Start with soil N (and visualize by major family)
 aus_data |> count(family) |> arrange(desc(n))
-
-aus_data |> 
-  ggplot(
-    aes(x = SN_total_0_30, 
-        y = leaf_N_per_dry_mass,
-        color = family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae')
-        )) + 
-  geom_point(alpha = 0.4) + 
-  labs(color = 'In 3 major families?') +
-  theme_bw() 
-
 aus_data |> ggplot(aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + 
-  geom_point(alpha = 0.2) + 
-  geom_smooth(method = 'lm', se = F)
-
-# Major families only 
-ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass, color = family)) + 
-  geom_point(
-    data = aus_data |> filter(family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae')), 
-    alpha = 0.4) + 
-  geom_smooth(
-    data = aus_data |> filter(family == 'Myrtaceae'), 
-    method = 'lm', 
-    se = F) +
-  geom_smooth(
-    data = aus_data |> filter(family == 'Fabaceae'), 
-    method = 'lm', 
-    se = F) +
-  geom_smooth(
-    data = aus_data |> filter(family == 'Proteaceae'), 
-    method = 'lm', 
-    se = F) +
-  geom_smooth(
-    data = aus_data,
-    method = 'lm',
-    se = F) +
+  geom_point(alpha = 0.2, size = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") + 
   theme_bw()
 
-# Major families and all data for comparison 
+# Major families only
+ggplot(
+    data = filter(aus_data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+    mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass, color = family)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = F) +
+  theme_bw()
+
+# Investigate different relationships across major families
+dot_plot_by_family(xvar = SN_total_0_30, yvar = leaf_N_per_dry_mass)
+dot_plot_by_family(xvar = SP_total_0_30, yvar = leaf_P_per_dry_mass)
