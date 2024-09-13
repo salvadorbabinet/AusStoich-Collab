@@ -9,7 +9,6 @@ library(V.PhyloMaker2)
 
 #to include in email, tre files and raw csv
 
-
 aus_data <- aus_data
 
 ##----------------------------Function Definitions-----------------------------
@@ -94,7 +93,7 @@ extract_trait_values <- function(tree_tib, label_col, trait_col, cut) {
 austraits_all_pos_sp_tree<- read.tree("Inputs/Trees/austraits_all_pos_sp.tre")
 
 
-austraits_all_pos_sp_df <- read_csv('all_pos_austraits_LCVP_sp.csv') #829
+austraits_all_pos_sp_df <- read_csv('Inputs/all_pos_austraits_LCVP_sp.csv') #829
 
 #-----all_pos_sp_all_data derivation
 
@@ -156,8 +155,8 @@ all_pos_sp_plot + geom_facet(
   panel = 'Trait',
   data = avg_all_pos_sp_data,
   geom = geom_col,
-  mapping = aes(x = avg_leaf_P),
-  orientation = "y")  + ggtitle("Average Leaf P")
+  mapping = aes(x = avg_leaf_C),
+  orientation = "y")  + ggtitle("Average Leaf C")
 
 
 #circular base
@@ -178,8 +177,8 @@ ggtree(ITS_tree) + geom_tiplab(size = 1.1) +
     panel = 'Trait',
     data = avg_all_pos_sp_data,
     geom = geom_col,
-    mapping = aes(x = avg_leaf_N),
-    orientation = "y")  + ggtitle("Average Leaf N")
+    mapping = aes(x = avg_leaf_C),
+    orientation = "y")  + ggtitle("Average Leaf C")
 
 
 #-------------------------------------------------------------------------------
@@ -224,7 +223,7 @@ if (tree_tib == "austraits") {
 # CV_P
 # CV_C
 
-trait <- "avg_leaf_C"
+trait <- "avg_leaf_N"
 
 # 3. extract_trait_values() on tree tib to get values of interest
 trait_data <- extract_trait_values(tree_tib, "label", 
@@ -232,7 +231,7 @@ trait_data <- extract_trait_values(tree_tib, "label",
 
 # 4. Get signals
 K_signal <- phylosig(tree, trait_data,
-                     method = "K", nsim = 10000) 
+                     method = "K", nsim = 10) 
 print(K_signal)
 #note that number doesn't change depending on nsim
 
