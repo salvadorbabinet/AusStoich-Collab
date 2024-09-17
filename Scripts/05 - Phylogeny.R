@@ -7,8 +7,6 @@ library(treeio)
 library(phytools)
 library(V.PhyloMaker2)
 
-#to include in email, tre files and raw csv
-
 aus_data <- aus_data
 
 ##----------------------------Function Definitions-----------------------------
@@ -38,20 +36,24 @@ add_CV_columns <- function(df) {
                                                                na.rm = TRUE))
   return(CV_added_df) 
 }
+#CV = NA can mean only one entry per that species
+#CV = 0 means no variation for that species
 
 
 #function for averaging nutrient data after adding covariance
 average_nutrient_data <- function(df) {
   nutrient_averaged_df <- df %>%
-    group_by(species_binom, family, genus, woodiness, reclass_life_history,
-             putative_BNF, myc_type, CV_N, CV_P, CV_C) %>%
+    group_by(species_binom) %>%
     summarize(
       avg_leaf_N = mean(leaf_N_per_dry_mass, na.rm = TRUE),
       avg_leaf_C = mean(leaf_C_per_dry_mass, na.rm = TRUE),
       avg_leaf_P = mean(leaf_P_per_dry_mass, na.rm = TRUE),
-    )
+    ) %>%
+    ungroup()
   return(nutrient_averaged_df)
-}
+  #returns df of just species identity and associated leaf concentration
+} 
+#avg = NaN means all entries for that species NA 
 
 
 #--------- for parsing through tree tib objects
@@ -106,8 +108,6 @@ all_pos_sp_data <- select_relevant_columns(all_pos_sp_data)
 
 
 all_pos_sp_data <- add_CV_columns(all_pos_sp_data)
-#CV = NA can mean only one entry per that species
-#CV = 0 means no variation for that species
 
 
 #------end of all_pos_sp_all derivation
@@ -155,8 +155,10 @@ all_pos_sp_plot + geom_facet(
   panel = 'Trait',
   data = avg_all_pos_sp_data,
   geom = geom_col,
-  mapping = aes(x = avg_leaf_C),
-  orientation = "y")  + ggtitle("Average Leaf C")
+  mapping = aes(x = avg_leaf_N),
+  orientation = "y")+  
+  ggtitle("Average Leaf N") +
+  theme(plot.title = element_text(size = 20))
 
 
 #circular base
@@ -238,4 +240,13 @@ print(K_signal)
 lambda <- phylosig(tree, trait_data,
                    method = "lambda") 
 print(lambda)
-#------------------------------------------------------------------------------
+#---------------------------------Testing---------------------------------------
+
+
+
+
+
+
+
+
+
