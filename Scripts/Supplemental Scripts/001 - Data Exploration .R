@@ -325,26 +325,3 @@ ggplot() +
   theme_minimal() +
   scale_fill_manual(values = color_palette, name = " ") +
   theme(legend.position = c(0.83, 0.86))
-
-
-
-# library(ggplot2)
-
-var_bnf <- brick(here(outputs_loc, "Tropics_BNF_Variance.tif"))
-var_bnf_df <- as.data.frame(rasterToPoints(var_bnf,spatial = TRUE))
-
-# Set your x-axis extent
-x_axis_extent <- c(0,40)
-
-# Specify the colors for each dataset
-color_palette <- c("BNF - Tropics" = "yellow", "BNF - Sampled points" = "red")
-
-# Create density plot for TWO VARIABLES
-ggplot() +
-  geom_density(data = var_bnf_df, aes(x = lyr.1, fill = "BNF - Tropics"), alpha = 0.5) +
-  geom_density(data = bnf_no_NA, aes(x = Variance, fill = "BNF - Sampled points"), alpha = 0.5) +
-  labs(title = "Density Plot of BNF model variance - no Sahara", x = "g N M-2 yr -1", y = "Density") +
-  theme_minimal() +
-  xlim(x_axis_extent) +
-  scale_fill_manual(values = color_palette, name = " ") +  # Set legend name and colors
-  theme(legend.position = c(0.83, 0.86))  # Adjust these values for the desired position
