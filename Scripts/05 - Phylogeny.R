@@ -25,23 +25,26 @@ select_relevant_columns <- function(df) {
 
 
 #function for adding coefficient of variation column
+#for any dataframe
 add_CV_columns <- function(df) {
   CV_added_df <- df %>%
-    group_by(species_binom) %>%
+    group_by(species_binom) %>% #need to rewrite, not getting same value by hand
+    #grouping by species should solve the issue idk where the number is coming from....
     mutate(CV_N = sd(leaf_N_per_dry_mass, na.rm = TRUE) / mean(leaf_N_per_dry_mass,
                                                                na.rm = TRUE),
            CV_P = sd(leaf_P_per_dry_mass, na.rm = TRUE) / mean(leaf_P_per_dry_mass,
                                                                na.rm = TRUE),
            CV_C = sd(leaf_C_per_dry_mass, na.rm = TRUE) / mean(leaf_C_per_dry_mass,
-                                                               na.rm = TRUE))
+                                                               na.rm = TRUE)) %>%
+    ungroup()
   return(CV_added_df) 
 }
 #CV = NA can mean only one entry per that species
 #CV = 0 means no variation for that species
 
 
-#function for averaging nutrient data after adding covariance
-average_nutrient_data <- function(df) {
+#function for averaging nutrient data only
+average_nutrient_data_v1 <- function(df) {
   nutrient_averaged_df <- df %>%
     group_by(species_binom) %>%
     summarize(
@@ -53,18 +56,34 @@ average_nutrient_data <- function(df) {
   return(nutrient_averaged_df)
   #returns df of just species identity and associated leaf concentration
 } 
+
+
+#function for averaging nutrient data, once covariance is added
+average_nutrient_data <- function(df) {
+  nutrient_averaged_df <- df %>%
+    group_by(species_binom) %>%
+    summarize(
+      avg_leaf_N = mean(leaf_N_per_dry_mass, na.rm = TRUE),
+      avg_leaf_C = mean(leaf_C_per_dry_mass, na.rm = TRUE),
+      avg_leaf_P = mean(leaf_P_per_dry_mass, na.rm = TRUE),
+      #Keep all columns:
+      across(-c(leaf_N_per_dry_mass, leaf_C_per_dry_mass, leaf_P_per_dry_mass),
+             ~ first(.), .names = "{.col}") 
+    ) %>%
+    ungroup() %>%
+    select(-avg_leaf_N, -avg_leaf_C, -avg_leaf_P,
+           everything(), avg_leaf_N, avg_leaf_C, avg_leaf_P) #move columns to end
+  
+  return(nutrient_averaged_df)
+}
 #avg = NaN means all entries for that species NA 
 
 
-#--------- for parsing through tree tib objects
+#--------- merging tree tib with trait data
 add_relevant_columns <- function(tree_tib, avg_sp_data) {
   merged_tib <- left_join(tree_tib, avg_sp_data, by = c("label" = "species_binom"))
-  
-  selected_tib <- merged_tib %>% 
-    select(parent, node, branch.length, label, family, genus, woodiness,
-           reclass_life_history, putative_BNF, myc_type, CV_N, CV_P, CV_C,
-           avg_leaf_N, avg_leaf_C, avg_leaf_P)
-  return(selected_tib)
+
+  return(merged_tib)
 }
 
 
@@ -155,9 +174,9 @@ all_pos_sp_plot + geom_facet(
   panel = 'Trait',
   data = avg_all_pos_sp_data,
   geom = geom_col,
-  mapping = aes(x = avg_leaf_N),
+  mapping = aes(x = CV_C),
   orientation = "y")+  
-  ggtitle("Average Leaf N") +
+  ggtitle("CV C") +
   theme(plot.title = element_text(size = 20))
 
 
@@ -190,8 +209,8 @@ ggtree(ITS_tree) + geom_tiplab(size = 1.1) +
 #------------------------Phylogenetic Signal------------------------------------
 #trait data must be in same order as label in tree
 
-aus_all_pos_sp_tree_tib_sig <- as_tibble(austraits_all_pos_sp_tree)
-aus_all_pos_sp_tree_tib_sig <- add_relevant_columns(aus_all_pos_sp_tree_tib_sig,
+aus_all_pos_sp_tree_tib <- as_tibble(austraits_all_pos_sp_tree)
+aus_all_pos_sp_tree_tib_sig <- add_relevant_columns(aus_all_pos_sp_tree_tib,
                                                      avg_all_pos_sp_data)
 
 ITS_tree_tib <- add_relevant_columns(ITS_tree_tib, avg_ITS_sp_data)
@@ -225,7 +244,7 @@ if (tree_tib == "austraits") {
 # CV_P
 # CV_C
 
-trait <- "avg_leaf_N"
+trait <- "CV_C"
 
 # 3. extract_trait_values() on tree tib to get values of interest
 trait_data <- extract_trait_values(tree_tib, "label", 
@@ -242,11 +261,14 @@ lambda <- phylosig(tree, trait_data,
 print(lambda)
 #---------------------------------Testing---------------------------------------
 
+m <- left_join(aus_all_pos_sp_tree_tib, avg_all_pos_sp_data, by = c("label" = "species_binom"))
 
+add_relevant_columns <- function(tree_tib, avg_sp_data) {
+  merged_tib <- left_join(tree_tib, avg_sp_data, by = c("label" = "species_binom"))
+  
+  return(merged_tib)
+}
 
-
-
-
-
+n <- add_relevant_columns(aus_all_pos_sp_tree_tib, avg_all_pos_sp_data)
 
 

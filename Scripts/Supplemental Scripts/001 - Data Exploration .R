@@ -72,7 +72,8 @@ ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
 
 #--------------------------------Species Frequency-----------------------------------
 species <- as.data.frame(table(aus_data$species_binom))  %>%
-  arrange(desc(Freq))
+  arrange(desc(Freq)) %>%
+  rename(species_binom = Var1)
 
 #basic
 ggplot(data = aus_data, mapping = aes(x = species_binom)) +
@@ -80,7 +81,7 @@ ggplot(data = aus_data, mapping = aes(x = species_binom)) +
   theme_minimal()
 
 #how many of each species
-ggplot(data = species, mapping = aes(x = reorder(Var1, -Freq),
+ggplot(data = species, mapping = aes(x = reorder(species_binom, -Freq),
                                      y = Freq)) +
   geom_col() +
   labs(x = "Species") +
@@ -88,13 +89,15 @@ ggplot(data = species, mapping = aes(x = reorder(Var1, -Freq),
   theme_minimal()
   
 ggplot(data = subset(species, Freq > 30),
-       mapping = aes(x = reorder(Var1, -Freq), y = Freq,
-                     fill = Var1)) +
+       mapping = aes(x = reorder(species_binom, -Freq), y = Freq,
+                     fill = species_binom)) +
   geom_col() +
   scale_fill_discrete() +
   labs(x = "Species") +
   coord_flip() +
   theme_minimal() 
+
+#species frequency table with associated location for plotting
 
 species_geo <- tibble(
   species_binom = aus_data$species_binom,
@@ -103,8 +106,16 @@ species_geo <- tibble(
   group_by(species_binom) %>%
   mutate(frequency = n()) %>%
   ungroup() %>%
-  select(species_binom, lat, long, frequency)
+  select(species_binom, lat, long, frequency) %>%
+  distinct() %>% #to remove duplicate rows
+  arrange(desc(frequency))
+#here, frequency = #of observations in original df
 
+#aus_data = 7818 observations 
+#species_geo = 2982 unique species observations
+
+
+#species plot on australia map 
 ggplot() + australia_map +
   geom_point(data = subset(species_geo, frequency > 50), mapping = aes(x = long, y = lat,
              color = species_binom), size = 2) +
@@ -112,11 +123,35 @@ ggplot() + australia_map +
   theme_minimal() 
 
 
+#number of species per observation number, with associated list
+species_observations <- species %>%
+  group_by(Freq) %>%
+  summarize(
+    species_count = n(),            
+    species_list = list(toString(species_binom))            
+  ) %>%
+  ungroup()
+
+
+#how many species per number of observations
+ggplot(data = species_observations) +
+  geom_col(mapping = aes(x = Freq, y = species_count)) +
+  theme_minimal() 
+#most species just have one observation
+
+#subsetting by frequency
+ggplot(data = subset(species_observations, Freq < 50)) +
+  geom_col(mapping = aes(x = Freq, y = species_count)) +
+  theme_minimal() 
+
+
+
 #---------genus
 genus <- as.data.frame(table(aus_data$genus)) %>%
-  arrange(desc(Freq))
+  arrange(desc(Freq)) %>%
+  rename(genus = Var1)
 
-ggplot(data = genus, mapping = aes(x = reorder(Var1, -Freq),
+ggplot(data = genus, mapping = aes(x = reorder(genus, -Freq),
                                      y = Freq)) +
   geom_col() +
   labs(x = "Genus") +
@@ -124,8 +159,8 @@ ggplot(data = genus, mapping = aes(x = reorder(Var1, -Freq),
   theme_minimal()
 
 ggplot(data = subset(genus, Freq > 60),
-       mapping = aes(x = reorder(Var1, -Freq), y = Freq,
-                     fill = Var1)) +
+       mapping = aes(x = reorder(genus, -Freq), y = Freq,
+                     fill = genus)) +
   geom_col() +
   scale_fill_discrete() +
   labs(x = "Genus") +
@@ -135,10 +170,11 @@ ggplot(data = subset(genus, Freq > 60),
 
 #--------family
 family <- as.data.frame(table(aus_data$family)) %>%
-  arrange(desc(Freq))
+  arrange(desc(Freq)) %>%
+  rename(family = Var1)
 
 
-ggplot(data = family, mapping = aes(x = reorder(Var1, -Freq),
+ggplot(data = family, mapping = aes(x = reorder(family, -Freq),
                                    y = Freq)) +
   geom_col() +
   labs(x = "Family") +
@@ -269,10 +305,6 @@ ggplot(data = aus_data, mapping = aes(x = leaf_N_per_dry_mass)) +
       geom_density() +
       theme_minimal()
 
-       
-p + ggplot(data = na_data, mapping = aes(x = leaf_N_per_dry_mass)) +
-  geom_density() #two seperate panels nvm
-
 #try katies way, thank you katie :"))))))
 
 #specify colors
@@ -296,15 +328,6 @@ ggplot() +
 
 #Density plot of missing leaf data across environmental variables
 #do for all environmental variables
-
-#density of observations for environmental variable 
-
-#base plots
-ggplot() +
-  geom_density(data = aus_data, 
-               mapping = aes(x = SP_total_0_30)) +
-  theme_minimal()
-
 
 
 #Options:
