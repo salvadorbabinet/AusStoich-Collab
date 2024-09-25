@@ -120,9 +120,9 @@ ggplot() +
     ) + 
   coord_quickmap() +
   geom_jitter( #Bin by species frequency? 
-    data = tidy_data, 
+    data = aus_data, 
     aes(x = long_deg, y = lat_deg),
-    alpha = 0.1
+    alpha = 0.2, size = 2
     ) +
   labs(
     title = 'Spatial distribution of observations in AusTraits',

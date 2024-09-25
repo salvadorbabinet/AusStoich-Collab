@@ -2,6 +2,7 @@
 # Libraries & functions ---------------------------------------------------
 library(here)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 theme_set(theme_bw())
 library(corrplot)
@@ -59,31 +60,39 @@ dot_plot_by_family <- function(data = aus_data, xvar, yvar) {
 }
 
 log_plot_by_family <- function(data = aus_data, xvar, yvar) {
-  p1 <- ggplot(data, aes(x = {{xvar}}, y = {{yvar}})) +
+  p1 <- ggplot(data, aes(x = log({{xvar}}), y = log({{yvar}}))) +
     geom_point(alpha = 0.2, size = 0.6) +
-    geom_smooth(formula = log(y) ~ log(x), se = FALSE, linetype = "dashed") +
-    geom_abline(intercept = 0, slope = 1) +
-    coord_trans(x = "log", y = "log") +
-    theme_bw()
-  p2 <- ggplot(mapping = aes(x = {{xvar}}, y = {{yvar}})) +
+    geom_smooth(
+      method = lm,
+      se = FALSE,
+      linetype = "dashed"
+    ) +
+    geom_abline(intercept = 0, slope = 1)
+  p2 <- ggplot(mapping = aes(x = log({{xvar}}), y = log({{yvar}}))) +
     geom_point(
       data = filter(data, !family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
       alpha = 0.2,
-      size = 0.6) +
-    geom_smooth(data = data, formula = log(y) ~ log(x), linetype = "dashed", se = FALSE) +
+      size = 0.6
+    ) +
+    geom_smooth(
+      data = data,
+      method = lm,
+      linetype = "dashed",
+      se = FALSE
+    ) +
     geom_point(
       data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
       mapping = aes(color = family),
       alpha = 0.2,
-      size = 0.6) +
+      size = 0.6
+    ) +
     geom_smooth(
       data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
       mapping = aes(color = family),
-      formula = log(y) ~ log(x),
-      se = FALSE) +
-    geom_abline(intercept = 0, slope = 1) +
-    coord_trans(x = "log", y = "log") +
-    theme_bw()
+      method = lm,
+      se = FALSE
+    ) +
+    geom_abline(intercept = 0, slope = 1)
   p1 + p2
 }
 
@@ -216,12 +225,44 @@ density_plot_by_family(xvar = leaf_N_per_dry_mass)
 density_plot_by_family(xvar = leaf_P_per_dry_mass)
 density_plot_by_family(xvar = leaf_C_per_dry_mass)
 
+ggplot(aus_data, aes(x = leaf_P_per_dry_mass, y = leaf_N_per_dry_mass)) +
+    geom_point(alpha = 0.2, size = 0.6) +
+    geom_smooth(
+      method = glm,
+      se = FALSE,
+      linetype = "dashed"
+    ) +
+    geom_abline(intercept = 0, slope = 1) +
+    coord_trans(x = "log", y = "log")
+
+ggplot(mapping = aes(x = log(leaf_P_per_dry_mass), y = log(leaf_N_per_dry_mass))) +
+    geom_point(
+      data = filter(aus_data, !family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      alpha = 0.2,
+      size = 0.6
+    ) +
+    geom_smooth(
+      data = aus_data,
+      method = lm,
+      linetype = "dashed",
+      se = FALSE
+    ) +
+    geom_point(
+      data = filter(aus_data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      alpha = 0.2,
+      size = 0.6
+    ) +
+    geom_smooth(
+      data = filter(aus_data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      method = lm,
+      se = FALSE
+    ) +
+    geom_abline(intercept = 0, slope = 1)
+
 
 # Andrew demonstration
-data <- sample(c(0, 1), size = 500, replace = T)
-mean(data)
-sd(data)
-
 nested_aus_data <- aus_data |> nest_by(family) |>
   mutate(
     row_count = nrow(data), 
@@ -254,3 +295,42 @@ nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |>
   geom_histogram()
 
 nested_aus_data$tidymodels[[2]]
+
+
+# Variability 
+variability_data <- aus_data |> nest_by(species_binom) |>
+  mutate(n = nrow(data)) |> 
+  filter(n > 50) |> 
+  unnest(everything())
+variability_data
+
+p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species", y = "Foliar Nitrogen (mg/g)")
+
+p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_P_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_cartesian(ylim = c(0, 4)) +
+  labs(x = "Species", y = "Foliar Phosphorus (mg/g)")
+
+p3 <- ggplot(variability_data, aes(x = species_binom, y = leaf_C_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_cartesian(ylim = c(400, 600)) +
+  labs(x = "Species", y = "Foliar Carbon (mg/g)")
+
+p1+p2+p3
+
+p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_P_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species")
+
+p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_C_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species")
+
+p1 + p2
