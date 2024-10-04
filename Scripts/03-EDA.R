@@ -1,9 +1,7 @@
 # AusStoich Exploratory Data Analysis 
 # Libraries & functions ---------------------------------------------------
 library(here)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
+library(tidyverse)
 theme_set(theme_bw())
 library(corrplot)
 library(patchwork)
@@ -11,8 +9,6 @@ library(patchwork)
 library(httpgd)
 hgd()
 hgd_browse()
-
-# library(tidyverse)
 
 histogram <- function(data, variable, bins = NULL, ylim = NULL) {
   ggplot(data, aes(x = {{variable}})) + 
@@ -57,6 +53,12 @@ dot_plot_by_family <- function(data = aus_data, xvar, yvar) {
       se = FALSE) +
     theme_bw()
   p1 + p2
+}
+
+dot_plot_by_factor <- function(xvar, yvar, factor, data = aus_data) {
+  ggplot(data, aes(x = {{xvar}}, y = {{yvar}}, color = {{factor}})) +
+    geom_jitter(alpha = 0.2, width = 0.1) +
+    geom_smooth(method = "lm", se = FALSE)
 }
 
 log_plot_by_family <- function(data = aus_data, xvar, yvar) {
@@ -105,6 +107,10 @@ density_plot_by_family <- function(data = aus_data, xvar, xlim = NULL, ylim = NU
   coord_cartesian(xlim = xlim, ylim = ylim)
 }
 
+density_plot_by_factor <- function(xvar, factor, xlim = NULL, ylim = NULL, data = aus_data) { # nolint: line_length_linter.
+  ggplot(data, aes(x = {{xvar}}, color = {{factor}}, fill = {{factor}})) +
+    geom_density(alpha = 0.4, linewidth = 0.7)
+}
 
 # Missing data ------------------------------------------------------------
 # All entries with unexpected NAs (not C and P or ratios)
@@ -262,6 +268,48 @@ ggplot(mapping = aes(x = log(leaf_P_per_dry_mass), y = log(leaf_N_per_dry_mass))
     geom_abline(intercept = 0, slope = 1)
 
 
+# Other factors of interest
+dot_plot_by_factor(SN_total_0_30, leaf_N_per_dry_mass, putative_BNF)
+density_plot_by_factor(leaf_N_per_dry_mass, putative_BNF)
+density_plot_by_factor(SN_total_0_30, putative_BNF)
+
+ggplot(
+  aus_data,
+  aes(
+    x = SN_total_0_30,
+    y = leaf_N_per_dry_mass,
+    color = putative_BNF,
+    fill = putative_BNF
+  )) +
+  geom_violin(alpha = 0.4)
+
+dot_plot_by_factor(SN_total_0_30, leaf_N_per_dry_mass, myc_type)
+density_plot_by_factor(leaf_N_per_dry_mass, woodiness)
+density_plot_by_factor(SN_total_0_30, woodiness)
+
+ggplot(
+  aus_data,
+  aes(
+    x = SN_total_0_30,
+    y = leaf_N_per_dry_mass,
+    color = woodiness,
+    fill = woodiness
+  )) +
+  geom_violin(alpha = 0.4)
+
+
+aus_data |> filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) |>
+  ggplot(mapping = aes(
+    x = leaf_P_per_dry_mass,
+    y = leaf_N_per_dry_mass,
+    color = family,
+    fill = family
+  )) +
+  geom_violin(alpha = 0.4)
+
+
+
+
 # Andrew demonstration
 nested_aus_data <- aus_data |> nest_by(family) |>
   mutate(
@@ -334,3 +382,4 @@ p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / 
   labs(x = "Species")
 
 p1 + p2
+

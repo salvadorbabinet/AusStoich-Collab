@@ -1,8 +1,6 @@
 # AusStoich Data Import
 # Libraries & functions
 library(here)
-library(readr)
-library(dplyr)
 library(tidyverse)
 
 # Data import (following structure adjustments from 01)
