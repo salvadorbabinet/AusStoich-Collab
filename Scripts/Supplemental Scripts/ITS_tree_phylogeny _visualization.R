@@ -219,5 +219,4 @@ ggplot(trns_avg_nut_df, aes(x = ln_N, y = frequency)) +
   theme_minimal() 
 
 #maybe aggregate by frequency? so would get mean of many dif. species
-#then it would make sense to normalize 
-  
+#then it would make sense to normalize

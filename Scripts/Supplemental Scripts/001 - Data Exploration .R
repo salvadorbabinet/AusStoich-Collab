@@ -122,6 +122,13 @@ ggplot() + australia_map +
   scale_color_discrete() +
   theme_minimal() 
 
+#specific species
+ggplot() + australia_map +
+  geom_point(data = subset(species_geo, species_binom == "Mesomelaena_pseudostygia"),
+             mapping = aes(x = long, y = lat, color = species_binom), size = 2) +
+  scale_color_discrete() +
+  theme_minimal() 
+
 
 #number of species per observation number, with associated list
 species_observations <- species %>%

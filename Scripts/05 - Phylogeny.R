@@ -270,5 +270,3 @@ add_relevant_columns <- function(tree_tib, avg_sp_data) {
 }
 
 n <- add_relevant_columns(aus_all_pos_sp_tree_tib, avg_all_pos_sp_data)
-
-
