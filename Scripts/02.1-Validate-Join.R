@@ -1,11 +1,11 @@
-# AusStoich Data Join Validation 
-# Libraries & Functions ---------------------------------------------------
+# AusStoich Data Join Validation
+# Libraries & Functions ----
 library(here)
 library(tidyverse)
 
 
-# Validate join -----------------------------------------------------------
-# Create data objects 
+# Validate join ----
+# Create data objects
 trait_data <- read_csv(
   file = here('Inputs', 'Old', 'austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv'),
   na = c('', 'NA', '#N/A','uncertain')
@@ -44,8 +44,8 @@ trait_data_clean |> filter(is.na(lat_deg) | is.na(long_deg))
 env_data_clean |> count(lat_deg) |> filter(n > 1) 
 env_data_clean |> count(lat_deg, long_deg) |> filter(n > 1) 
 
-# Join data by rounding 
-# Round latitude & longitude to match environment / climate data 
+# Join data by rounding
+# Round latitude & longitude to match environment / climate data
 trait_data_clean <- trait_data_clean |> 
   mutate(
     lat_deg = round(lat_deg, digits = 4), 
