@@ -136,7 +136,8 @@ tidy_data |> count(woodiness)
 tidy_data |> count(across(woodiness:putative_BNF)) 
 
 
-# Note: thorough EDA moved to 02 with adjusted data; keeping below for reference 
+# Note: thorough EDA moved to 02 with adjusted data
+# Keeping below for reference
 # Variation ----
 # Foliar carbon 
 tidy_data |> ggplot(aes(x = leaf_C_per_dry_mass)) +
