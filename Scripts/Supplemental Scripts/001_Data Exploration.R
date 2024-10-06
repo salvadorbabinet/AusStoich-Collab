@@ -2,6 +2,12 @@ library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(httpgd)
+library(languageserver)
+library(lintr)
+
+httpgd::hgd() #plot viewer
+hgd_browse()
 
 aus_data
 
@@ -26,7 +32,7 @@ env_data <- aus_data %>% select(
 
 
 #total observations on map
-ggplot() + 
+ggplot() +
   australia_map +
   geom_point(data = aus_data, aes(x = long_deg, y = lat_deg)) +
   theme_minimal() +
@@ -63,11 +69,11 @@ ggplot() + australia_map +
 
 #how are our values spread?
 ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
-  geom_bar(fill = "salmon", width = 0.5) + 
+  geom_bar(fill = "salmon", width = 0.5) +
   theme_minimal()
 
 ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
-  geom_histogram(fill = "salmon") + 
+  geom_histogram(fill = "salmon") +
   theme_minimal()
 
 #--------------------------------Species Frequency-----------------------------------
@@ -87,7 +93,7 @@ ggplot(data = species, mapping = aes(x = reorder(species_binom, -Freq),
   labs(x = "Species") +
   coord_flip() +
   theme_minimal()
-  
+
 ggplot(data = subset(species, Freq > 30),
        mapping = aes(x = reorder(species_binom, -Freq), y = Freq,
                      fill = species_binom)) +
@@ -95,7 +101,7 @@ ggplot(data = subset(species, Freq > 30),
   scale_fill_discrete() +
   labs(x = "Species") +
   coord_flip() +
-  theme_minimal() 
+  theme_minimal()
 
 #species frequency table with associated location for plotting
 
@@ -111,31 +117,31 @@ species_geo <- tibble(
   arrange(desc(frequency))
 #here, frequency = #of observations in original df
 
-#aus_data = 7818 observations 
+#aus_data = 7818 observations
 #species_geo = 2982 unique species observations
 
 
-#species plot on australia map 
+#species plot on australia map
 ggplot() + australia_map +
   geom_point(data = subset(species_geo, frequency > 50), mapping = aes(x = long, y = lat,
              color = species_binom), size = 2) +
   scale_color_discrete() +
-  theme_minimal() 
+  theme_minimal()
 
 #specific species
 ggplot() + australia_map +
   geom_point(data = subset(species_geo, species_binom == "Mesomelaena_pseudostygia"),
-             mapping = aes(x = long, y = lat, color = species_binom), size = 2) +
+  mapping = aes(x = long, y = lat, color = species_binom), size = 2) +
   scale_color_discrete() +
-  theme_minimal() 
+  theme_minimal()
 
 
 #number of species per observation number, with associated list
 species_observations <- species %>%
   group_by(Freq) %>%
   summarize(
-    species_count = n(),            
-    species_list = list(toString(species_binom))            
+    species_count = n(),
+    species_list = list(toString(species_binom))
   ) %>%
   ungroup()
 
@@ -143,13 +149,13 @@ species_observations <- species %>%
 #how many species per number of observations
 ggplot(data = species_observations) +
   geom_col(mapping = aes(x = Freq, y = species_count)) +
-  theme_minimal() 
+  theme_minimal()
 #most species just have one observation
 
 #subsetting by frequency
 ggplot(data = subset(species_observations, Freq < 50)) +
   geom_col(mapping = aes(x = Freq, y = species_count)) +
-  theme_minimal() 
+  theme_minimal()
 
 
 
@@ -172,7 +178,7 @@ ggplot(data = subset(genus, Freq > 60),
   scale_fill_discrete() +
   labs(x = "Genus") +
   coord_flip() +
-  theme_minimal() 
+  theme_minimal()
 
 
 #--------family
@@ -194,8 +200,7 @@ ggplot(data = family, mapping = aes(x = reorder(family, -Freq),
 #NAs stored as string for visualization purposes
 na_data <- aus_data %>%
   mutate(across(c(leaf_P_per_dry_mass,leaf_C_per_dry_mass,
-                  NP_ratio, CN_ratio, CP_ratio), as.character)) %>%
-  
+                  NP_ratio, CN_ratio, CP_ratio), as.character)) %>% 
   replace_na(list(leaf_N_per_dry_mass= "NA", leaf_P_per_dry_mass = "NA",
                   leaf_C_per_dry_mass = "NA",NP_ratio = "NA",
                   CN_ratio = "NA", CP_ratio = "NA"))
@@ -211,14 +216,14 @@ na_data <- na_data %>%
 ggplot() +
   australia_map +
   geom_point(data = na_data, aes(x = long_deg, y = lat_deg)) +
-  theme_minimal()+
+  theme_minimal() +
   labs(title = "Missing Data")
 #missing data is spread evenly across Australia
 
 
 #---------families and genera with missing data
 ggplot(data = na_data, mapping = aes(x = family)) +
-  geom_bar(fill = "darkgreen") + 
+  geom_bar(fill = "darkgreen") +
   theme_minimal() +
   coord_flip() + 
   theme(axis.text.y = element_text(size = 6)) +
