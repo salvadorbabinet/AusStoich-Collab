@@ -111,34 +111,45 @@ density_plot_by_factor <- function(xvar, factor, xlim = NULL, ylim = NULL, data 
   ggplot(data, aes(x = {{xvar}}, color = {{factor}}, fill = {{factor}})) +
     geom_density(alpha = 0.4, linewidth = 0.7)
 }
+# Variability ----
+variability_data <- aus_data |> nest_by(species_binom) |>
+  mutate(n = nrow(data)) |> 
+  filter(n > 50) |> 
+  unnest(everything())
+variability_data
 
-# Missing data ------------------------------------------------------------
-# All entries with unexpected NAs (not C and P or ratios)
-missing <- aus_data |> filter(if_any(!leaf_P_per_dry_mass:CP_ratio, is.na))
-missing |> # Print unexpected column names with NAs 
-  summarize(across(everything(), \(x) sum(is.na(x)))) |> 
-  pivot_longer(everything()) |> 
-  filter(value > 0) |> 
-  print(n = Inf)
+p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species", y = "Foliar Nitrogen (mg/g)")
 
-# Soil 
-missing_soil <- missing |> filter(is.na(SN_total_0_30)) # Hayes_2014 and EsperonRodriguez_2020 
-missing_soil |> select(c(observation_id, species_binom, lat_deg:long_deg, SN_total_0_30:AP_total_0_30)) |> 
-  print(n = Inf)
-aus_data |> filter(dataset_id == 'EsperonRodriguez_2020') # Both datasets have more entries than these NA ones 
+p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_P_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_cartesian(ylim = c(0, 4)) +
+  labs(x = "Species", y = "Foliar Phosphorus (mg/g)")
 
-# NPP and climate 
-missing_climate_npp <- missing |> filter(is.na(NPP)) # All from Hayes_2014 
-missing_seasonality |> select(c(observation_id, species_binom, lat_deg:long_deg, NPP:temp_seasonality))
-aus_data |> filter(dataset_id == 'Hayes_2014') # But many more Hayes_2014 entries w/ seasonality 
+p3 <- ggplot(variability_data, aes(x = species_binom, y = leaf_C_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_cartesian(ylim = c(400, 600)) +
+  labs(x = "Species", y = "Foliar Carbon (mg/g)")
 
-# Categorical variables 
-aus_data |> count(across(woodiness:putative_BNF))
-aus_data |> filter(woodiness == 1 & reclass_life_history == 'short') |> 
-  distinct(species_binom) # Ambiguous, look up species / set as NA accordingly
+p1 + p2 + p3
 
+p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_P_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species")
 
-# Variation ---------------------------------------------------------------
+p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_C_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species")
+
+p1 + p2
+
+# Variation ----
 # Quick look at continuous distributions via iteration 
 cont_data <- aus_data |> select(where(is.numeric))
 for (i in 4:ncol(cont_data)) {
@@ -182,9 +193,7 @@ v3_merge_error <- aus_data |> filter(precipitation > 1000)
 all_data |> histogram(MAT, 80) 
 all_data |> histogram(NPP, 20) 
 all_data |> histogram(AET, 50) 
-
-
-# Co-variation ------------------------------------------------------------
+# Co-variation ----
 # Pearson Correlation Matrix (could also do Kendall or Spearman coeffs.)
 corr_matrix <- aus_data |> 
   select(where(is.numeric)) |> 
@@ -306,80 +315,4 @@ aus_data |> filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) |>
     fill = family
   )) +
   geom_violin(alpha = 0.4)
-
-
-
-
-# Andrew demonstration
-nested_aus_data <- aus_data |> nest_by(family) |>
-  mutate(
-    row_count = nrow(data), 
-    mean_sn = mean(data$SN_total_0_30), 
-    data_c = list(
-      mutate(data, SN_total_0_30 = SN_total_0_30 - mean_sn)
-    )) |> 
-  filter(row_count > 2) |> 
-  mutate(
-    models = list(lm(formula = leaf_N_per_dry_mass ~ SN_total_0_30, data = data_c)),
-    tidymodels = list(broom::tidy(models))
-  )
-
-nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |> 
-  mutate(family = forcats::fct_reorder(family, estimate, .fun = min)) |>
-  ggplot(mapping = aes(x = family, y = estimate, ymin = estimate - std.error, ymax = estimate + std.error)) + 
-  geom_pointrange() + 
-  facet_wrap(~term, scales = "free")
-
-nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |> 
-  select(family, term, estimate) |> 
-  tidyr::pivot_wider(names_from = term, values_from = estimate) |>
-  ggplot(mapping = aes(x = `(Intercept)`, y = SN_total_0_30)) + 
-  geom_point()
-
-nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |> 
-  select(family, term, estimate) |> 
-  tidyr::pivot_wider(names_from = term, values_from = estimate) |>
-  ggplot(mapping = aes(x = `(Intercept)`)) + 
-  geom_histogram()
-
-nested_aus_data$tidymodels[[2]]
-
-
-# Variability 
-variability_data <- aus_data |> nest_by(species_binom) |>
-  mutate(n = nrow(data)) |> 
-  filter(n > 50) |> 
-  unnest(everything())
-variability_data
-
-p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass)) + 
-  geom_jitter(alpha = 0.6, width = 0.1) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  labs(x = "Species", y = "Foliar Nitrogen (mg/g)")
-
-p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_P_per_dry_mass)) + 
-  geom_jitter(alpha = 0.6, width = 0.1) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  coord_cartesian(ylim = c(0, 4)) +
-  labs(x = "Species", y = "Foliar Phosphorus (mg/g)")
-
-p3 <- ggplot(variability_data, aes(x = species_binom, y = leaf_C_per_dry_mass)) + 
-  geom_jitter(alpha = 0.6, width = 0.1) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  coord_cartesian(ylim = c(400, 600)) +
-  labs(x = "Species", y = "Foliar Carbon (mg/g)")
-
-p1+p2+p3
-
-p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_P_per_dry_mass)) + 
-  geom_jitter(alpha = 0.6, width = 0.1) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  labs(x = "Species")
-
-p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_C_per_dry_mass)) + 
-  geom_jitter(alpha = 0.6, width = 0.1) +
-  theme(axis.text.x = element_text(angle = 90)) +
-  labs(x = "Species")
-
-p1 + p2
 
