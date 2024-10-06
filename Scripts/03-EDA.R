@@ -276,7 +276,6 @@ ggplot(mapping = aes(x = log(leaf_P_per_dry_mass), y = log(leaf_N_per_dry_mass))
     ) +
     geom_abline(intercept = 0, slope = 1)
 
-
 # Other factors of interest
 dot_plot_by_factor(SN_total_0_30, leaf_N_per_dry_mass, putative_BNF)
 density_plot_by_factor(leaf_N_per_dry_mass, putative_BNF)
@@ -306,7 +305,6 @@ ggplot(
   )) +
   geom_violin(alpha = 0.4)
 
-
 aus_data |> filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) |>
   ggplot(mapping = aes(
     x = leaf_P_per_dry_mass,
@@ -315,4 +313,3 @@ aus_data |> filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) |>
     fill = family
   )) +
   geom_violin(alpha = 0.4)
-
