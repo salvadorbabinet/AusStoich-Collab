@@ -1,17 +1,88 @@
-# AusStoich Modeling 
-# Libraries & functions 
+# AusStoich Modeling
+# Libraries & functions ----
 library(here)
+library(broom)
 library(tidyverse)
-library(tidymodels)
-tidymodels_prefer()
+theme_set(theme_bw())
+
+library(httpgd)
+hgd()
+hgd_browse()
 
 library(corrplot)
 library(patchwork)
-library(ggforce)
-library(bestNormalize)
+
+# library(tidymodels)
+# tidymodels_prefer()
+# library(bestNormalize)
+# library(ggforce)
+
+# Functions for simple regressions (on leaf N for now)
+# tidymodels will streamline this eventually
+prep_simple_data <- function(predictor, outcome, data = aus_data) {
+  data |> select({{outcome}}, {{predictor}}) |>
+  mutate(log_outcome = log({{outcome}})) |>
+  filter(log_outcome > 0)
+}
+
+check_linearity_condition <- function(predictor, outcome, data = simple_reg_data) {
+  ggplot(data, aes(x = {{predictor}}, y = {{outcome}})) +
+    geom_jitter(alpha = 0.5) +
+    geom_smooth(se = F, color = "dodgerblue1") +
+    geom_smooth(
+      method = lm,
+      color = "firebrick2",
+      se = F,
+      linetype = "dashed",
+      linewidth = 1.5
+    )
+}
+
+aus_data
 
 
-# Starting with leaf N outcome 
+# Base R simple linear regression ----
+# Log transform leaf N
+simple_reg_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass)
+simple_reg_data
+
+# Look at data
+check_linearity_condition(SN_total_0_30, leaf_N_per_dry_mass)
+ggplot(simple_reg_data, aes(x = SN_total_0_30)) + geom_histogram()
+ggplot(simple_reg_data, aes(x = leaf_N_per_dry_mass)) + geom_histogram()
+
+check_linearity_condition(SN_total_0_30, log_outcome)
+ggplot(simple_reg_data, aes(x = log_outcome)) + geom_histogram()
+
+# Residuals...
+# With raw data
+simple_reg_raw <- lm(leaf_N_per_dry_mass ~ SN_total_0_30, simple_reg_data)
+simple_reg_raw |> augment() |>
+  ggplot(aes(x = .resid)) +
+  geom_histogram()
+simple_reg_raw |> augment() |>
+  ggplot(aes(x = leaf_N_per_dry_mass, y = .resid)) +
+  geom_point(alpha = 0.5)
+
+summary(simple_reg_raw)
+
+# With log-transformed data
+simple_reg_log <- lm(log_leaf_N ~ SN_total_0_30, simple_reg_data)
+simple_reg_log |> augment() |>
+  ggplot(aes(x = .resid)) +
+  geom_histogram()
+simple_reg_log |> augment() |>
+  ggplot(aes(x = log_leaf_N, y = .resid)) +
+  geom_point(alpha = 0.5)
+
+summary(simple_reg_log)
+
+
+# base R glm
+
+
+# tidymodels attempt ----
+# Starting with leaf N outcome
 # Correlation plot 
 aus_data |> select(!Unique_ID:myc_type) |> 
   select(!leaf_P_per_dry_mass:CP_ratio) |> 
@@ -41,7 +112,6 @@ n3 <- ggplot(aus_test, aes(x = leaf_N_per_dry_mass)) +
 n1 + n2 + n3 
 rm(n1, n2, n3)
 
-
 # Initial recipe with PCA pre-requirements 
 aus_rec <- recipe(leaf_N_per_dry_mass ~ ., data = aus_train) |> 
   update_role(dataset_id:myc_type, new_role = 'factor') |> 
@@ -66,7 +136,6 @@ p2 <- aus_rec_processed |>
   theme_bw()
 
 p1 + p2
-
 
 # Add PCA step 
 aus_pca <- aus_rec |> 
@@ -113,7 +182,6 @@ ggplot(aes(x = value, y = terms)) +
     y = 'Term'
   )
 
-
 # Then bake and plot components to view scores
 aus_pca_processed <- aus_pca |> bake(where(is.numeric), new_data = aus_test)
 aus_pca_processed
@@ -136,4 +204,3 @@ aus_pca_processed |>
   labs(color = 'Foliar N Range', fill = 'Foliar N Range')
 
 # Or do major families ? 
-
