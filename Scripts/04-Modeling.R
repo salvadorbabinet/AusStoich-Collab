@@ -38,11 +38,12 @@ check_linearity_condition <- function(predictor, outcome, data = simple_reg_data
     )
 }
 
+
 aus_data
 
 
 # Base R simple linear regression ----
-# Log transform leaf N
+# Log transform outcome to meet regression conditions
 simple_reg_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass)
 simple_reg_data
 
@@ -55,11 +56,9 @@ check_linearity_condition(SN_total_0_30, log_outcome)
 ggplot(simple_reg_data, aes(x = log_outcome)) + geom_histogram()
 
 # Residuals...
-# With raw data
+# With raw data (for reference)
 simple_reg_raw <- lm(leaf_N_per_dry_mass ~ SN_total_0_30, simple_reg_data)
-simple_reg_raw |> augment() |>
-  ggplot(aes(x = .resid)) +
-  geom_histogram()
+simple_reg_raw |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
 simple_reg_raw |> augment() |>
   ggplot(aes(x = leaf_N_per_dry_mass, y = .resid)) +
   geom_point(alpha = 0.5)
@@ -67,12 +66,10 @@ simple_reg_raw |> augment() |>
 summary(simple_reg_raw)
 
 # With log-transformed data
-simple_reg_log <- lm(log_leaf_N ~ SN_total_0_30, simple_reg_data)
+simple_reg_log <- lm(log_outcome ~ SN_total_0_30, simple_reg_data)
+simple_reg_log |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
 simple_reg_log |> augment() |>
-  ggplot(aes(x = .resid)) +
-  geom_histogram()
-simple_reg_log |> augment() |>
-  ggplot(aes(x = log_leaf_N, y = .resid)) +
+  ggplot(aes(x = log_outcome, y = .resid)) +
   geom_point(alpha = 0.5)
 
 summary(simple_reg_log)
