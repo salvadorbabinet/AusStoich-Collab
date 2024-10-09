@@ -19,12 +19,16 @@ library(patchwork)
 
 # Functions for simple regressions (on leaf N for now)
 # tidymodels will streamline this eventually
+
+# Create subset with predictor of interest & log-transformed outcome
+# Only looking at leaf N so far, generalize to different outcomes?
 prep_simple_data <- function(predictor, outcome, data = aus_data) {
   data |> select({{outcome}}, {{predictor}}) |>
   mutate(log_outcome = log({{outcome}})) |>
   filter(log_outcome > 0) # For now w/ weird low N, revisit this
 }
 
+# Plot raw vs log-transformed outcome to check linearity condition
 check_linearity_condition <- function(predictor, outcome, data = simple_reg_data) {
   ggplot(data, aes(x = {{predictor}}, y = {{outcome}})) +
     geom_jitter(alpha = 0.5) +
@@ -38,21 +42,21 @@ check_linearity_condition <- function(predictor, outcome, data = simple_reg_data
     )
 }
 
-# Note: only testing with leaf N outcome so far
-# Could be useful to generalize to other outcomes / subsets
-run_simple_regression <- function(predictor, outcome, data = aus_data) {
-  simple_reg_data <- prep_simple_data(predictor, outcome)
-  simple_reg <- lm(log_outcome ~ predictor, simple_reg_data)
-
-  p1 <- check_linearity_condition(predictor, outcome)
-  p2 <- check_linearity_condition(predictor, log_outcome)
-  p1 + p2
+# Outputs linearity & residual normality / homoscedasticity visuals
+# Outputs regression summary (coefficients, p, R2)
+simple_regression_outputs <- function(predictor, outcome, data = simple_reg_data) {
+  h1 <- ggplot(data, aes(x = {{predictor}})) + geom_histogram()
+  plot(h1)
+  
+  p1 <- check_linearity_condition({{predictor}}, {{outcome}})
+  p2 <- check_linearity_condition({{predictor}}, log_outcome)
+  plot(p1 + p2)
 
   r1 <- simple_reg |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
   r2 <- simple_reg |> augment() |>
     ggplot(aes(x = log_outcome, y = .resid)) +
     geom_point(alpha = 0.5)
-  r1 + r2
+  plot(r1 + r2)
 
   summary(simple_reg)
 }
@@ -94,24 +98,16 @@ simple_reg_log |> augment() |>
 summary(simple_reg_log)
 
 
-# Simple regression: N ~ CEC
+# Simple regression: N ~ CEC ----
 simple_reg_data <- prep_simple_data(CEC_total_0_30, leaf_N_per_dry_mass)
+simple_reg <- lm(log_outcome ~ CEC_total_0_30, simple_reg_data)
+
 simple_reg_data
+simple_regression_outputs(CEC_total_0_30, leaf_N_per_dry_mass)
 
-check_linearity_condition(CEC_total_0_30, leaf_N_per_dry_mass)
-check_linearity_condition(CEC_total_0_30, log_outcome)
-ggplot(simple_reg_data, aes(x = CEC_total_0_30)) + geom_histogram()
-ggplot(simple_reg_data, aes(x = leaf_N_per_dry_mass)) + geom_histogram()
-ggplot(simple_reg_data, aes(x = log_outcome)) + geom_histogram()
 
-simple_reg_log <- lm(log_outcome ~ CEC_total_0_30, simple_reg_data)
-simple_reg_log |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
-simple_reg_log |> augment() |>
-  ggplot(aes(x = log_outcome, y = .resid)) +
-  geom_point(alpha = 0.5)
-summary(simple_reg_log)
+# Simple regression: N ~ ----
 
-run_simple_regression(CEC_total_0_30, leaf_N_per_dry_mass)
 
 # base R glm
 
