@@ -45,9 +45,11 @@ check_linearity_condition <- function(predictor, outcome, data = simple_reg_data
 # Outputs linearity & residual normality / homoscedasticity visuals
 # Outputs regression summary (coefficients, p, R2)
 simple_regression_outputs <- function(predictor, outcome, data = simple_reg_data) {
+  label <- rlang::englue("Predictor = {{predictor}}, outcome = log transformed {{outcome}}")
+
   h1 <- ggplot(data, aes(x = {{predictor}})) + geom_histogram()
   plot(h1)
-  
+
   p1 <- check_linearity_condition({{predictor}}, {{outcome}})
   p2 <- check_linearity_condition({{predictor}}, log_outcome)
   plot(p1 + p2)
@@ -56,16 +58,25 @@ simple_regression_outputs <- function(predictor, outcome, data = simple_reg_data
   r2 <- simple_reg |> augment() |>
     ggplot(aes(x = log_outcome, y = .resid)) +
     geom_point(alpha = 0.5)
-  plot(r1 + r2)
+  plot(r1 + r2 + plot_annotation(title = label))
 
   summary(simple_reg)
+}
+
+# PCA functions
+plot_loadings <- function(component, data = pca_loadings) {
+  label <- rlang::englue("Loadings plot for PC{{component}}")
+  data |> filter(PC == component) |> 
+    ggplot(aes(y = column, x = value)) +
+    geom_col() +
+    labs(title = label)
 }
 
 
 aus_data
 
 
-# Simple regression: N ~ SN ----
+# Simple regression: N ~ SN (sample process) ----
 # Log transform outcome to meet regression conditions
 simple_reg_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass)
 simple_reg_data
@@ -89,24 +100,63 @@ simple_reg_raw |> augment() |>
 summary(simple_reg_raw)
 
 # With log-transformed data
-simple_reg_log <- lm(log_outcome ~ SN_total_0_30, simple_reg_data)
-simple_reg_log |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
-simple_reg_log |> augment() |>
+simple_reg <- lm(log_outcome ~ SN_total_0_30, simple_reg_data)
+simple_reg |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
+simple_reg |> augment() |>
   ggplot(aes(x = log_outcome, y = .resid)) +
   geom_point(alpha = 0.5)
 
-summary(simple_reg_log)
+summary(simple_reg)
 
 
-# Simple regression: N ~ CEC ----
+# Simple regressions w/ N outcome ----
+# N ~ SN
+simple_reg_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass)
+simple_reg <- lm(log_outcome ~ SN_total_0_30, simple_reg_data)
+
+simple_reg_data
+simple_regression_outputs(SN_total_0_30, leaf_N_per_dry_mass)
+
+# N ~ CEC (cation exchange)
 simple_reg_data <- prep_simple_data(CEC_total_0_30, leaf_N_per_dry_mass)
 simple_reg <- lm(log_outcome ~ CEC_total_0_30, simple_reg_data)
 
 simple_reg_data
 simple_regression_outputs(CEC_total_0_30, leaf_N_per_dry_mass)
 
+# N ~ PPT (precipitation)
+simple_reg_data <- prep_simple_data(PPT, leaf_N_per_dry_mass)
+simple_reg <- lm(log_outcome ~ PPT, simple_reg_data)
 
-# Simple regression: N ~ ----
+simple_reg_data
+simple_regression_outputs(PPT, leaf_N_per_dry_mass)
+
+
+# PCA ----
+# Center / scale only numeric variables, then run PCA
+pca_data <- aus_data |> 
+  select(leaf_N_per_dry_mass, SN_total_0_30:temp_seasonality) |>
+  scale()
+aus_pca <- prcomp(pca_data)
+
+# Look at outputs
+print(aus_pca)
+plot(aus_pca) # Scree plot
+
+pca_eigens <- tidy(aus_pca, "pcs") # Probably want up to PC5
+pca_eigens
+
+pca_loadings <- tidy(aus_pca, "loadings")
+p1 <- plot_loadings(1)
+p2 <- plot_loadings(2)
+p3 <- plot_loadings(3)
+p4 <- plot_loadings(4)
+p1 + p2 + p3 + p4
+
+pca_scores <- tidy(aus_pca, "scores") # Then can plot components to each other
+pca_scores |> pivot_wider(names_from = PC, values_from = value) |>
+  ggplot(aes(x = `1`, y = `2`)) + # Choose PCs to plot here
+  geom_point(alpha = 0.5)
 
 
 # base R glm
