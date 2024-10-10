@@ -5,10 +5,11 @@ library(ape)
 library(ggtree)
 library(tidytree)
 library(treeio)
+library(V.PhyloMaker2)
 
 
-##########---------austraits_all_pos_sp.tre derivation---------##########
-austraits_all_pos_sp_df <- read_csv(here('Inputs', 'Supplemental Inputs - Sofia',
+#---------austraits_all_pos_sp.tre derivation---------
+austraits_all_pos_sp_df <- read_csv(here('Inputs',
                                          'all_pos_austraits_LCVP_sp.csv'))
 
 austraits_all_pos_sp <- phylo.maker(sp.list = austraits_all_pos_sp_df,
@@ -16,61 +17,54 @@ austraits_all_pos_sp <- phylo.maker(sp.list = austraits_all_pos_sp_df,
                                     nodes = nodes.info.1.LCVP,
                                     scenarios="S3")
 #with this object can write .tre file, however it is already in Inputs
-#write.tree(austraits_all_pos_sp$scenario.3,
-          # "Inputs/Trees/austraits_all_pos_sp.tre")
+#write.tree(austraits_all_pos_sp$scenario.3, "Inputs/Trees/austraits_all_pos_sp.tre")
 
 austraits_all_pos_sp_tree<- read.tree(here("Inputs/Trees/austraits_all_pos_sp.tre"))
-#plot(austraits_all_pos_sp_tree, cex= 0.1)
-
-##########---------austraits_all_pos_sp.tre plots---------##########
-library(ggtree)
-library(tidytree)
-library(treeio)
-
-austraits_all_pos_sp_tree_tib <- as_tibble(austraits_all_pos_sp_tree)
 
 
-#start of all_pos_sp_all tib derivation
-all_pos_sp_all_data <- aus_data[all_corrected_data$species_binom %in%
-                                            austraits_all_pos_sp_df$species, ]
-length(unique(all_pos_sp_all_data$species_binom)) #829 so ok
+#---------pruned_aus_data tree derivation---------
 
-all_pos_sp_all_data <- all_pos_sp_all_data[,c("species_binom", "family", "genus",
-                                              "woodiness", "reclass_life_history",
-                                              "putative_BNF", "myc_type",
-                                              "leaf_N_per_dry_mass", "leaf_P_per_dry_mass", 
-                                              "leaf_C_per_dry_mass", "NP_ratio",
-                                              "CN_ratio", "CP_ratio")]
+prune_prep_tree <- function (df) {
+  #This function will take a pruned aus_data object
+  #and create a new df in format necessary to create tree
+  #using phylo.maker
+  #Note: shouldn't use this for aus_data only, as names have not been standardized
+  
+  pruned_prep <- df %>%
+    distinct(species_binom, genus, family) %>%
+    mutate(
+      species.relative = NA,
+      genus.relative = NA
+    ) %>%
+    rename(species = species_binom)
+  
+  return(pruned_prep)
+} #works as intended
 
-all_pos_sp_all_data <- all_sp_nut_data %>%
-  group_by(species_binom) %>%
-  mutate(CV_N = sd(leaf_N_per_dry_mass, na.rm = TRUE) / mean(leaf_N_per_dry_mass,
-                                                             na.rm = TRUE),
-         CV_P = sd(leaf_P_per_dry_mass, na.rm = TRUE) / mean(leaf_P_per_dry_mass,
-                                                             na.rm = TRUE),
-         CV_C = sd(leaf_C_per_dry_mass, na.rm = TRUE) / mean(leaf_C_per_dry_mass,
-                                                             na.rm = TRUE))
+#test writing function   
+test_prune_prep <- pruned_ausdata_three%>%
+  distinct(species_binom, genus, family) %>%
+  mutate(
+    species_relative = NA,  # Add empty column for species.relative
+    genus_relative = NA     # Add empty column for genus.relative
+  ) %>%
+  rename(species = species_binom) 
+  
+#species with less than or equal to three entries
+pruned_three_prepped <- prune_prep_tree(pruned_ausdata_three)
+  
+  
+pruned_three_tree <-phylo.maker(sp.list = pruned_three_prepped,
+                                    tree = GBOTB.extended.LCVP,
+                                    nodes = nodes.info.1.LCVP,
+                                    scenarios="S3")
 
-avg_all_pos_sp_all_data <- aggregate(. ~ species_binom, data = all_pos_sp_all_data, FUN = mean)
-#end of all_pos_sp_all tib derivation
+write.tree(pruned_three_tree$scenario.3, "Inputs/Trees/austraits_pruned_three.tre")
 
-
-
-
-p <- ggtree(austraits_all_pos_sp_tree) + geom_tiplab() 
-#can xlim(0.1) if needed
-plot(p)
-
-ggtree(austraits_all_pos_sp_tree,layout='circular')
-ggtree(austraits_all_pos_sp_tree, branch.length = "none",
-       layout = "circular") + geom_tiplab(size = 0.7) + ggtitle("All Possible Species in tips.info.LCVP")
-ggtree(austraits_all_pos_sp_tree, branch.length = "none",
-       layout = "circular") + geom_nodelab()
+auspruned_three_tree <-read.tree(here("Inputs/Trees/austraits_pruned_three.tre"))
 
 
-
-
-##########---------austraits_one_rep_per_gen.tre & genera lost---------##########
+#--------austraits_one_rep_per_gen.tre & genera lost---------
 
 austraits_one_rep_per_gen_tree<- read.tree(here("Inputs/Trees/austraits_one_rep_per_gen.tre"))
 #derivation of this .tre in supplemental scripts - LCVP & early phylogeny

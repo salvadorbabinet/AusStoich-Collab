@@ -76,6 +76,28 @@ ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
   geom_histogram(fill = "salmon") +
   theme_minimal()
 
+#--------------------------Leaf Nutrient Concentrations------------------------------
+
+ggplot(data = aus_data) +
+  geom_histogram(mapping = aes(x = leaf_P_per_dry_mass)) +
+  theme_minimal()
+
+#average nutrient concentration distributions + CV
+#functions from phylogeny script
+avg_aus_data <- average_nutrient_data(
+  add_CV_columns(select_relevant_columns(aus_data)))
+
+ggplot(data = avg_aus_data) +
+  geom_histogram(mapping = aes(x = CV_P)) +
+  theme_minimal()
+#whoops nothing is normal
+
+
+summary(glm(log(leaf_N_per_dry_mass) ~ SN_total_0_30+PPT,
+        data = aus_data, family = "gaussian"))
+#anova on glm to assess significantce of model entirely
+#post hoc test to look inside categorical variable variance 
+ 
 #--------------------------------Species Frequency-----------------------------------
 species <- as.data.frame(table(aus_data$species_binom))  %>%
   arrange(desc(Freq)) %>%
@@ -104,7 +126,6 @@ ggplot(data = subset(species, Freq > 30),
   theme_minimal()
 
 #species frequency table with associated location for plotting
-
 species_geo <- tibble(
   species_binom = aus_data$species_binom,
   lat = aus_data$lat_deg,
@@ -158,11 +179,84 @@ ggplot(data = subset(species_observations, Freq < 50)) +
   theme_minimal()
 
 
+prune_ausdata <- function(df, m) {
+#This function creates a species observation object
+#Uses the list it generates to get names of species that occur at
+#certain frequencies in our data, and uses said list to remove
+#all entries in aus_data that whose names are in list
+#Unidirectional condition! Will only remove species LESS THAN or equal to m
+
+#Create species observation object:
+#Freq, species_count, and list of species associated with Freq
+sp_obs <- df %>%
+   count(species_binom) %>%
+   rename(Freq = n) %>%
+   arrange(desc(Freq)) %>%
+   group_by(Freq) %>%
+   summarize(
+        species_count = n(),
+        species_list = list(toString(species_binom))
+            ) %>%
+            ungroup()
+
+#access list of species associated with freq less than, not equal to n:
+sp_list <- subset(sp_obs, Freq <= m)$species_list %>%
+  unlist() %>% #to properly format dif. rows as one vector
+  strsplit(", ") %>%
+  unlist()
+#this list will be used to prune aus_data
+
+#Remove species with Freq < n from aus_data
+pruned_df <- df %>%
+filter(!species_binom %in% sp_list)
+
+#remove intermediates
+rm(sp_obs, sp_list)
+
+  return(pruned_df)
+}
+
+#while making function:
+test_sp_obs <- aus_data %>%
+      count(species_binom) %>%
+     rename(Freq = n) %>%
+      arrange(desc(Freq)) %>%
+      group_by(Freq) %>%
+      summarize(
+        species_count = n(),
+        species_list = list(toString(species_binom))
+      ) %>%
+      ungroup()
+
+test_sp_list <- subset(test_sp_obs, Freq <= 3)$species_list %>%
+  unlist() %>% #to properly format dif. rows as one vector
+  strsplit(", ") %>%
+  unlist()
+#species less than n, but not equal to it 
+
+test_pruned_ausdata <- aus_data %>%
+filter(!species_binom %in% test_sp_list)
+
+pruned_ausdata_three <- prune_ausdata(aus_data, 3)
+
 
 #---------genus
 genus <- as.data.frame(table(aus_data$genus)) %>%
   arrange(desc(Freq)) %>%
   rename(genus = Var1)
+
+#similar to species observations
+#doesn't have an use (yet)
+#82 genera have only one entry 
+genus_obs <- aus_data %>%
+      count(genus) %>%
+      arrange(desc(n)) %>%
+      group_by(n) %>%
+      summarize(
+        genus_count = n(),
+        genera_list = list(toString(genus))
+      ) %>%
+      ungroup()
 
 ggplot(data = genus, mapping = aes(x = reorder(genus, -Freq),
                                      y = Freq)) +

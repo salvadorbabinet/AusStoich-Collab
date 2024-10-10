@@ -28,8 +28,7 @@ select_relevant_columns <- function(df) {
 #for any dataframe
 add_CV_columns <- function(df) {
   CV_added_df <- df %>%
-    group_by(species_binom) %>% #need to rewrite, not getting same value by hand
-    #grouping by species should solve the issue idk where the number is coming from....
+    group_by(species_binom) %>% 
     mutate(CV_N = sd(leaf_N_per_dry_mass, na.rm = TRUE) / mean(leaf_N_per_dry_mass,
                                                                na.rm = TRUE),
            CV_P = sd(leaf_P_per_dry_mass, na.rm = TRUE) / mean(leaf_P_per_dry_mass,
@@ -37,7 +36,7 @@ add_CV_columns <- function(df) {
            CV_C = sd(leaf_C_per_dry_mass, na.rm = TRUE) / mean(leaf_C_per_dry_mass,
                                                                na.rm = TRUE)) %>%
     ungroup()
-  return(CV_added_df) 
+  return(CV_added_df)
 }
 #CV = NA can mean only one entry per that species
 #CV = 0 means no variation for that species
@@ -68,7 +67,7 @@ average_nutrient_data <- function(df) {
       avg_leaf_P = mean(leaf_P_per_dry_mass, na.rm = TRUE),
       #Keep all columns:
       across(-c(leaf_N_per_dry_mass, leaf_C_per_dry_mass, leaf_P_per_dry_mass),
-             ~ first(.), .names = "{.col}") 
+             ~ first(.), .names = "{.col}")
     ) %>%
     ungroup() %>%
     select(-avg_leaf_N, -avg_leaf_C, -avg_leaf_P,
@@ -76,7 +75,7 @@ average_nutrient_data <- function(df) {
   
   return(nutrient_averaged_df)
 }
-#avg = NaN means all entries for that species NA 
+#avg = NaN means all entries for that species NA
 
 
 #--------- merging tree tib with trait data
@@ -111,16 +110,18 @@ extract_trait_values <- function(tree_tib, label_col, trait_col, cut) {
 
 #------------------------------Data Entry---------------------------------------
 
+
+#all pos sp data entry
 austraits_all_pos_sp_tree<- read.tree("Inputs/Trees/austraits_all_pos_sp.tre")
 
 
-austraits_all_pos_sp_df <- read_csv('Inputs/all_pos_austraits_LCVP_sp.csv') #829
+austraits_all_pos_sp_df <- read_csv('Inputs/all_pos_austraits_LCVP_sp.csv') #831
 
 #-----all_pos_sp_all_data derivation
 
 all_pos_sp_data <- aus_data[aus_data$species_binom %in%
                               austraits_all_pos_sp_df$species, ]
-length(unique(all_pos_sp_data$species_binom)) #829
+length(unique(all_pos_sp_data$species_binom)) #831
 
 
 all_pos_sp_data <- select_relevant_columns(all_pos_sp_data)
@@ -134,14 +135,33 @@ all_pos_sp_data <- add_CV_columns(all_pos_sp_data)
 #-----avg_all_pos_sp_all_data derivation
 
 avg_all_pos_sp_data <- average_nutrient_data(all_pos_sp_data)
-length(unique(avg_all_pos_sp_data$species_binom)) #829
+length(unique(avg_all_pos_sp_data$species_binom)) #831
 
 
 #-----end of avg_all_pos_sp_all_data derivation
 
 
-#-----ITS tree data entry
+#----pruned tree data entry 
 
+auspruned_three_tree <-read.tree(here("Inputs/Trees/austraits_pruned_three.tre"))
+
+#function in 001 Data exploration
+pruned_three_prepped <- prune_prep_tree(pruned_ausdata_three)
+
+#need pruned ausdata, derived in 001
+pruned_ausdata_three
+length(unique(pruned_ausdata_three$species_binom)) #473 
+
+pruned_three_data <- select_relevant_columns(pruned_ausdata_three)
+pruned_three_data <- add_CV_columns(pruned_ausdata_three)
+
+#avg
+avg_pruned_three_data <- average_nutrient_data(pruned_three_data)
+
+#----end of pruned tree data entry 
+
+
+#-----ITS tree data entry
 
 ITS_tree <- read.nexus("Inputs/Trees/ITS_tree.tre") 
 
@@ -184,7 +204,7 @@ all_pos_sp_plot + geom_facet(
 all_pos_sp_circular_plot <- ggtree(austraits_all_pos_sp_tree, layout = "circular",
                                    branch.length = "none")+ ggtitle("All Pos. Sp.")
 
-#most basic, no coloring circular bar plot                                
+#most basic, no coloring circular bar plot
 all_pos_sp_circular_plot + geom_fruit(
   data = avg_all_pos_sp_data,
   geom = geom_bar,
@@ -201,6 +221,18 @@ ggtree(ITS_tree) + geom_tiplab(size = 1.1) +
     mapping = aes(x = avg_leaf_C),
     orientation = "y")  + ggtitle("Average Leaf C")
 
+#pruned
+p <- ggtree(auspruned_three_tree) + geom_tiplab(size = 0.5)
+
+#most basic, no coloring, horizontal bar plot
+p + geom_facet(
+  panel = 'Trait',
+  data = avg_pruned_three_data,
+  geom = geom_col,
+  mapping = aes(x = CV_P),
+  orientation = "y")+  
+  ggtitle("CV_P") +
+  theme(plot.title = element_text(size = 20))
 
 #-------------------------------------------------------------------------------
 
@@ -213,15 +245,20 @@ aus_all_pos_sp_tree_tib <- as_tibble(austraits_all_pos_sp_tree)
 aus_all_pos_sp_tree_tib_sig <- add_relevant_columns(aus_all_pos_sp_tree_tib,
                                                      avg_all_pos_sp_data)
 
+pruned_three_tree_tib <- as_tibble(auspruned_three_tree)
+pruned_three_tree_tib <- add_relevant_columns(pruned_three_tree_tib,
+                                              avg_pruned_three_data)
+
 ITS_tree_tib <- add_relevant_columns(ITS_tree_tib, avg_ITS_sp_data)
 #cut at row 106, keep 105
 
 
 # 1. Pick tree, input as string. Options:
 # "ITS_tree", cut = 105
-# "austraits", cut = 830
+# "austraits", cut = 831
+# "pruned_three", cut = 473
 
-tree_tib <- "austraits" 
+tree_tib <- "pruned_three" 
 
 if (tree_tib == "ITS_tree") {
   cut = 105
@@ -231,10 +268,17 @@ if (tree_tib == "ITS_tree") {
 
 
 if (tree_tib == "austraits") {
-  cut = 830
+  cut = 831
   tree_tib = aus_all_pos_sp_tree_tib_sig
   tree = austraits_all_pos_sp_tree
 }
+
+if (tree_tib == "pruned_three") {
+  cut = 473
+  tree_tib = pruned_three_tree_tib
+  tree = auspruned_three_tree
+}
+
 
 # 2. Write in trait of interest as string. Options:
 # avg_leaf_N
@@ -252,7 +296,7 @@ trait_data <- extract_trait_values(tree_tib, "label",
 
 # 4. Get signals
 K_signal <- phylosig(tree, trait_data,
-                     method = "K", nsim = 10) 
+                     method = "K", nsim = 10000) 
 print(K_signal)
 #note that number doesn't change depending on nsim
 
