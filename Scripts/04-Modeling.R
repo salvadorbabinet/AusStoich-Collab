@@ -12,10 +12,10 @@ hgd_browse()
 library(corrplot)
 library(patchwork)
 
-# library(tidymodels)
-# tidymodels_prefer()
-# library(bestNormalize)
-# library(ggforce)
+library(tidymodels)
+tidymodels_prefer()
+library(bestNormalize)
+library(ggforce)
 
 # Functions for simple regressions (on leaf N for now)
 # tidymodels will streamline this eventually
@@ -110,39 +110,54 @@ summary(simple_reg)
 
 
 # Simple regressions w/ N outcome ----
-# N ~ SN
+# N ~ SN (soil nitrogen)
 simple_reg_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass)
 simple_reg <- lm(log_outcome ~ SN_total_0_30, simple_reg_data)
-
-simple_reg_data
 simple_regression_outputs(SN_total_0_30, leaf_N_per_dry_mass)
+
+# N ~ SOC (soil carbon)
+simple_reg_data <- prep_simple_data(SOC_total_0_30, leaf_N_per_dry_mass)
+simple_reg <- lm(log_outcome ~ SOC_total_0_30, simple_reg_data)
+simple_regression_outputs(SOC_total_0_30, leaf_N_per_dry_mass)
 
 # N ~ CEC (cation exchange)
 simple_reg_data <- prep_simple_data(CEC_total_0_30, leaf_N_per_dry_mass)
 simple_reg <- lm(log_outcome ~ CEC_total_0_30, simple_reg_data)
-
-simple_reg_data
 simple_regression_outputs(CEC_total_0_30, leaf_N_per_dry_mass)
 
 # N ~ PPT (precipitation)
 simple_reg_data <- prep_simple_data(PPT, leaf_N_per_dry_mass)
 simple_reg <- lm(log_outcome ~ PPT, simple_reg_data)
-
-simple_reg_data
 simple_regression_outputs(PPT, leaf_N_per_dry_mass)
+
+# N ~ MAT
+simple_reg_data <- prep_simple_data(MAT, leaf_N_per_dry_mass)
+simple_reg <- lm(log_outcome ~ MAT, simple_reg_data)
+simple_regression_outputs(MAT, leaf_N_per_dry_mass)
+
+# N ~ precipitation_seasonality
+simple_reg_data <- prep_simple_data(precipitation_seasonality, leaf_N_per_dry_mass)
+simple_reg <- lm(log_outcome ~ precipitation_seasonality, simple_reg_data)
+simple_regression_outputs(precipitation_seasonality, leaf_N_per_dry_mass)
 
 
 # PCA ----
 # Center / scale only numeric variables, then run PCA
+ggplot(aus_data, aes(x = SN_total_0_30)) + geom_histogram()
+
 pca_data <- aus_data |> 
-  select(leaf_N_per_dry_mass, SN_total_0_30:temp_seasonality) |>
+  select(SN_total_0_30:temp_seasonality) |>
+  mutate(across(everything(), log)) |>
   scale()
+
+ggplot(pca_data, aes(x = SN_total_0_30)) + geom_histogram()
+
 aus_pca <- prcomp(pca_data)
 
 # Look at outputs
-print(aus_pca)
-plot(aus_pca) # Scree plot
+print(aus_pca) # Loadings and eigens
 
+plot(aus_pca) # Scree plot (variance captured per component)
 pca_eigens <- tidy(aus_pca, "pcs") # Probably want up to PC5
 pca_eigens
 
@@ -160,6 +175,16 @@ pca_scores |> pivot_wider(names_from = PC, values_from = value) |>
 
 
 # base R glm
+glm_data <- aus_data |>
+  mutate(log_leaf_N = log(leaf_N_per_dry_mass)) |>
+  filter(log_leaf_N > 0)
+aus_glm <- lm(log_leaf_N ~ SN_total_0_30 + PPT + MAT + precipitation_seasonality, glm_data)
+r1 <- aus_glm |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
+r2 <- aus_glm |> augment() |>
+  ggplot(aes(x = log_leaf_N, y = .resid)) +
+  geom_point(alpha = 0.5)
+r1 + r2
+summary(aus_glm)
 
 
 # tidymodels attempt ----
