@@ -92,6 +92,10 @@ ggplot(data = avg_aus_data) +
   theme_minimal()
 #whoops nothing is normal
 
+#use salvador histogram function to do these properly
+ggplot(data = aus_data) +
+  geom_histogram(mapping = aes(x = NP_ratio), fill = "lightgreen") +
+  theme_minimal()
 
 summary(glm(log(leaf_N_per_dry_mass) ~ SN_total_0_30+PPT,
         data = aus_data, family = "gaussian"))
@@ -287,6 +291,18 @@ ggplot(data = family, mapping = aes(x = reorder(family, -Freq),
   labs(x = "Family") +
   coord_flip() +
   theme_minimal()
+
+#--------------------------------Species Identity-------------------------------
+
+#there are 5 gymnosperm families
+gymnosperm_data <- aus_data %>%
+  filter(family %in% c("Podocarpaceae", "Cupressaceae",
+                       "Araucariaceae", "Zamiaceae", "Cycadaceae"))
+
+
+ausdata_no_gymn<- aus_data%>% 
+  filter(!family %in% c("Podocarpaceae", "Cupressaceae",
+                        "Araucariaceae", "Zamiaceae", "Cycadaceae"))
 
 
 #--------------------------------Missing Data-----------------------------------

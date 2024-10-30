@@ -15,6 +15,18 @@ all_data <- read_csv(
   )
 )
 
+all_data <- all_data %>%
+  mutate(
+    ln_NP_ratio = log(NP_ratio),
+    ln_CN_ratio = log(CN_ratio),
+    ln_CP_ratio = log(CP_ratio)
+  ) %>%
+  relocate(
+    NP_ratio, CN_ratio, CP_ratio,
+    ln_NP_ratio, ln_CN_ratio, ln_CP_ratio,
+    .after = leaf_C_per_dry_mass
+  )
+
 # LCVP name standardization - derivation in phylogeny script
 naming_corrections <- read_csv(here('Inputs', 'all_naming_corrections.csv'))
 

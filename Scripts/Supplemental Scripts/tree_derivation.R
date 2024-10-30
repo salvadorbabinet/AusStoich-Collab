@@ -63,6 +63,18 @@ write.tree(pruned_three_tree$scenario.3, "Inputs/Trees/austraits_pruned_three.tr
 
 auspruned_three_tree <-read.tree(here("Inputs/Trees/austraits_pruned_three.tre"))
 
+#---------no gymnosperm tree derivation---------
+ausdata_no_gymn #from 01
+
+nogymn_prep <- prune_prep_tree((ausdata_no_gymn))
+nogymn_tree <- phylo.maker(sp.list = nogymn_prep,
+                                               tree = GBOTB.extended.LCVP,
+                                               nodes = nodes.info.1.LCVP,
+                                                scenarios="S3")
+
+write.tree(nogymn_tree$scenario.3, "Inputs/Trees/no_gymnosperm_tree.tre")
+
+nogymn_tree <-read.tree(here("Inputs/Trees/no_gymnosperm_tree.tre"))
 
 #--------austraits_one_rep_per_gen.tre & genera lost---------
 
@@ -73,3 +85,14 @@ austraits_one_rep_per_gen_tree<- read.tree(here("Inputs/Trees/austraits_one_rep_
 plot(austraits_one_rep_per_gen_tree, cex= 0.1)
 ggtree(austraits_one_rep_per_gen_tree, branch.length = "none",
        layout = "circular") + geom_tiplab(size = 2) + ggtitle("One Rep Per Genera in tips.info.LCVP")
+
+
+#--------aus_data only---------
+aus_data
+ausdata_tree <- prune_prep_tree(aus_data)
+ausdata_tree <- phylo.maker(sp.list = ausdata_tree,
+                         tree = GBOTB.extended.LCVP,
+                         nodes = nodes.info.1.LCVP,
+                         scenarios="S3")
+write.tree(ausdata_tree$scenario.3, "Inputs/Trees/ausdata.tre")
+ausdata_tree <- read.tree(here("Inputs/Trees/ausdata.tre"))
