@@ -1,9 +1,10 @@
-# AusStoich Data Structure 
-# Libraries & functions
+# AusStoich Data Structure
+# Libraries & functions ----
 library(here)
 library(tidyverse)
 
-# Takes tibble tb, categorical variable x; returns factorized count table for levels of x
+# Takes tibble tb, categorical variable x
+# Returns factorized count table for levels of x
 count_table <- function(tb, x) { 
   tb |> 
     count({{x}}, sort = T) |>
@@ -12,7 +13,8 @@ count_table <- function(tb, x) {
     select(n:name) |> relocate(name)
 }
 
-# Takes tibble tb, continuous variable x, (optional) grouping; returns summary stats 
+# Takes tibble tb, continuous variable x, (optional) grouping
+# Returns summary stats
 summarize_cont <- function(tb, x, grouping = NULL) {
   tb |> summarize(
     min = min({{x}}, na.rm = T),
@@ -27,9 +29,9 @@ summarize_cont <- function(tb, x, grouping = NULL) {
   )
 }
 
-# Data import & tidying ---------------------------------------------------
+# Data import & tidying ----
 # Initial import 
-raw_data <- read_csv(here('Inputs','austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv')) 
+raw_data <- read_csv(here('Inputs','austraits_leaf_stoichiometry_MASTER_v1.0_10-05-2024.csv'))
 raw_data #For reference
 
 tidy_data <- read_csv(
@@ -44,14 +46,14 @@ tidy_data <- read_csv(
   )
 
 tidy_data <- tidy_data |> 
-  select(Unique_ID:LATLONG) |> 
-  filter(!is.na(Unique_ID)) |> 
-  relocate(species_binom, .after = genus) |> 
+  select(Unique_ID:LATLONG) |>
+  filter(!is.na(Unique_ID)) |>
+  relocate(species_binom, .after = genus) |>
   relocate(c(lat_deg, long_deg), .after = dataset_id)
 
-tidy_data 
+tidy_data
 
-# Merging environmental data 
+# Merging environmental data
 env_data <- read_csv(here('Inputs', 'Aus-Stoich_gridded_env_data.csv')) |>
   rename(lat_deg = lat, long_deg = lon) 
 
@@ -63,9 +65,9 @@ joined_env <- full_join(env_data, seasonality_data)
 joined_data <- left_join(tidy_data, joined_env)
 
 write_csv(joined_data, 'AusStoich_Combined_Dataset_1.0.csv')
-  
-  
-# Structure  ---------------------------------------------------------
+
+
+# Structure  ----
 # Observation frequencies across taxa 
 species <- count_table(tidy_data, species_binom) 
 species
@@ -93,7 +95,7 @@ species |> #Only species above a given frequency threshold
     x = 'Species', y = 'Frequency'
     )
 
-species |> #Observation density for all species 
+species |> #Observation density for all species
   ggplot(aes(x = n)) +
   geom_density() +
   labs(
@@ -120,9 +122,9 @@ ggplot() +
     ) + 
   coord_quickmap() +
   geom_jitter( #Bin by species frequency? 
-    data = tidy_data, 
+    data = aus_data, 
     aes(x = long_deg, y = lat_deg),
-    alpha = 0.1
+    alpha = 0.2, size = 2
     ) +
   labs(
     title = 'Spatial distribution of observations in AusTraits',
@@ -134,8 +136,9 @@ tidy_data |> count(woodiness)
 tidy_data |> count(across(woodiness:putative_BNF)) 
 
 
-# Note: thorough EDA moved to 02 with adjusted data; keeping below for reference 
-# Variation ---------------------------------------------------------------
+# Note: thorough EDA moved to 02 with adjusted data
+# Keeping below for reference
+# Variation ----
 # Foliar carbon 
 tidy_data |> ggplot(aes(x = leaf_C_per_dry_mass)) +
   geom_histogram(bins = 80) +
@@ -185,7 +188,7 @@ tidy_data |> ggplot(aes(x = CP_ratio)) +
   geom_histogram(bins = 60)
 
 
-# Co-variation ------------------------------------------------------------
+# Co-variation ----
 # Example grouped stats 
 tidy_data |> summarize_cont(leaf_C_per_dry_mass, grouping = woodiness) 
 

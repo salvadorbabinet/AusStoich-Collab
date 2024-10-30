@@ -1,8 +1,14 @@
-# AusStoich Exploratory Data Analysis 
-# Libraries & functions 
+# AusStoich Exploratory Data Analysis
+# Libraries & functions ----
 library(here)
-library(corrplot)
 library(tidyverse)
+theme_set(theme_bw())
+library(corrplot)
+library(patchwork)
+
+library(httpgd)
+hgd()
+hgd_browse()
 
 histogram <- function(data, variable, bins = NULL, ylim = NULL) {
   ggplot(data, aes(x = {{variable}})) + 
@@ -24,34 +30,126 @@ summarize_cont <- function(data, variable, grouping = NULL) {
   )
 }
 
-# Missing data ------------------------------------------------------------
-# All entries with unexpected NAs (not C and P or ratios)
-missing <- aus_data |> filter(if_any(!leaf_P_per_dry_mass:CP_ratio, is.na))
-missing |> # Print unexpected column names with NAs 
-  summarize(across(everything(), \(x) sum(is.na(x)))) |> 
-  pivot_longer(everything()) |> 
-  filter(value > 0) |> 
-  print(n = Inf)
+dot_plot_by_family <- function(data = aus_data, xvar, yvar) {
+  p1 <- ggplot(data, aes(x = {{xvar}}, y = {{yvar}})) +
+    geom_point(alpha = 0.2, size = 0.6) +
+    geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+    theme_bw()
+  p2 <- ggplot(mapping = aes(x = {{xvar}}, y = {{yvar}})) +
+    geom_point(
+      data = filter(data, !family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      alpha = 0.2,
+      size = 0.6) +
+    geom_smooth(data = data, method = "lm", linetype = "dashed", se = FALSE) +
+    geom_point(
+      data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      alpha = 0.2,
+      size = 0.6) +
+    geom_smooth(
+      data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      method = "lm",
+      se = FALSE) +
+    theme_bw()
+  p1 + p2
+}
 
-# Soil 
-missing_soil <- missing |> filter(is.na(SN_total_0_30)) # Hayes_2014 and EsperonRodriguez_2020 
-missing_soil |> select(c(observation_id, species_binom, lat_deg:long_deg, SN_total_0_30:AP_total_0_30)) |> 
-  print(n = Inf)
-aus_data |> filter(dataset_id == 'EsperonRodriguez_2020') # Both datasets have more entries than these NA ones 
+dot_plot_by_factor <- function(xvar, yvar, factor, data = aus_data) {
+  ggplot(data, aes(x = {{xvar}}, y = {{yvar}}, color = {{factor}})) +
+    geom_jitter(alpha = 0.2, width = 0.1) +
+    geom_smooth(method = "lm", se = FALSE)
+}
 
-# NPP and climate 
-missing_climate_npp <- missing |> filter(is.na(NPP)) # All from Hayes_2014 
-missing_seasonality |> select(c(observation_id, species_binom, lat_deg:long_deg, NPP:temp_seasonality))
-aus_data |> filter(dataset_id == 'Hayes_2014') # But many more Hayes_2014 entries w/ seasonality 
+log_plot_by_family <- function(data = aus_data, xvar, yvar) {
+  p1 <- ggplot(data, aes(x = log({{xvar}}), y = log({{yvar}}))) +
+    geom_point(alpha = 0.2, size = 0.6) +
+    geom_smooth(
+      method = lm,
+      se = FALSE,
+      linetype = "dashed"
+    ) +
+    geom_abline(intercept = 0, slope = 1)
+  p2 <- ggplot(mapping = aes(x = log({{xvar}}), y = log({{yvar}}))) +
+    geom_point(
+      data = filter(data, !family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      alpha = 0.2,
+      size = 0.6
+    ) +
+    geom_smooth(
+      data = data,
+      method = lm,
+      linetype = "dashed",
+      se = FALSE
+    ) +
+    geom_point(
+      data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      alpha = 0.2,
+      size = 0.6
+    ) +
+    geom_smooth(
+      data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      method = lm,
+      se = FALSE
+    ) +
+    geom_abline(intercept = 0, slope = 1)
+  p1 + p2
+}
 
+density_plot_by_family <- function(data = aus_data, xvar, xlim = NULL, ylim = NULL) { # nolint: line_length_linter.
+  ggplot(
+    data = filter(data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+    mapping = aes(x = {{xvar}}, color = family, fill = family)
+  ) +
+  geom_density(alpha = 0.4, linewidth = 0.7) +
+  coord_cartesian(xlim = xlim, ylim = ylim)
+}
 
-# Categorical variables 
-aus_data |> count(across(woodiness:putative_BNF))
-aus_data |> filter(woodiness == 1 & reclass_life_history == 'short') |> 
-  distinct(species_binom) # Ambiguous, look up species / set as NA accordingly
+density_plot_by_factor <- function(xvar, factor, xlim = NULL, ylim = NULL, data = aus_data) { # nolint: line_length_linter.
+  ggplot(data, aes(x = {{xvar}}, color = {{factor}}, fill = {{factor}})) +
+    geom_density(alpha = 0.4, linewidth = 0.7)
+}
+# Variability ----
+variability_data <- aus_data |> nest_by(species_binom) |>
+  mutate(n = nrow(data)) |> 
+  filter(n > 50) |> 
+  unnest(everything())
+variability_data
 
+p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species", y = "Foliar Nitrogen (mg/g)")
 
-# Variation ---------------------------------------------------------------
+p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_P_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_cartesian(ylim = c(0, 4)) +
+  labs(x = "Species", y = "Foliar Phosphorus (mg/g)")
+
+p3 <- ggplot(variability_data, aes(x = species_binom, y = leaf_C_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_cartesian(ylim = c(400, 600)) +
+  labs(x = "Species", y = "Foliar Carbon (mg/g)")
+
+p1 + p2 + p3
+
+p1 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_P_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species")
+
+p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / leaf_C_per_dry_mass)) + 
+  geom_jitter(alpha = 0.6, width = 0.1) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Species")
+
+p1 + p2
+
+# Variation ----
 # Quick look at continuous distributions via iteration 
 cont_data <- aus_data |> select(where(is.numeric))
 for (i in 4:ncol(cont_data)) {
@@ -95,42 +193,123 @@ v3_merge_error <- aus_data |> filter(precipitation > 1000)
 all_data |> histogram(MAT, 80) 
 all_data |> histogram(NPP, 20) 
 all_data |> histogram(AET, 50) 
-
-
-# Co-variation ------------------------------------------------------------
+# Co-variation ----
 # Pearson Correlation Matrix (could also do Kendall or Spearman coeffs.)
 corr_matrix <- aus_data |> 
   select(where(is.numeric)) |> 
-  select(!c(Unique_ID, NP_ratio, CN_ratio, CP_ratio)) |> 
-  mutate(lat_deg = abs(lat_deg)) |> # Note abs(lat) - should this pass to all data? 
+  select(!c(Unique_ID, lat_deg, long_deg, NP_ratio, CN_ratio, CP_ratio)) |> 
   cor(use = 'pairwise.complete.obs')  # complete.obs / na.or.complete / pairwise.complete.obs
 
 corr_matrix
 corr_matrix |> corrplot(method = 'ellipse', tl.col = 'black')
 
-# Leaf N by predictors 
+# Leaf N by predictors
 # Start with soil N (and visualize by major family)
 aus_data |> count(family) |> arrange(desc(n))
+aus_data |> ggplot(aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + 
+  geom_point(alpha = 0.2, size = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") + 
+  theme_bw()
 
-aus_data |> filter(SN_total_0_30 < 50) |> 
-  ggplot(
-    aes(x = SN_total_0_30, 
-        y = leaf_N_per_dry_mass,
-        color = family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae')
-        )) + 
-  geom_point(alpha = 0.4) + 
-  labs(color = 'family') +
-  theme_bw() 
+# Major families only
+ggplot(
+    data = filter(aus_data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+    mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass, color = family)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = F) +
+  theme_bw()
 
-temp_data <- aus_data |> filter(SN_total_0_30 < 50)
+# Investigate relationships across major families
+# Foliar to environmental elements
+dot_plot_by_family(xvar = SN_total_0_30, yvar = leaf_N_per_dry_mass)
+density_plot_by_family(xvar = SN_total_0_30)
 
-ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + 
-  geom_point(data = filter(temp_data, !family %in% c('Myrtaceae', 'Fabaceae', 'Proteaceae'))) +  
-  geom_point(data = filter(temp_data, family == 'Myrtaceae'), color = 'red') + 
-  geom_point(data = filter(temp_data, family == 'Fabaceae'), color = 'cyan') + 
-  geom_point(data = filter(temp_data, family == 'Proteaceae'), color = 'orange') +
-  theme_bw() 
+dot_plot_by_family(xvar = SP_total_0_30, yvar = leaf_P_per_dry_mass)
+density_plot_by_family(xvar = SP_total_0_30, xlim = c(0, 0.1))
 
+dot_plot_by_family(xvar = AP_total_0_30, yvar = leaf_P_per_dry_mass)
+density_plot_by_family(xvar = AP_total_0_30)
 
+# Foliar elements to each other
+dot_plot_by_family(xvar = leaf_P_per_dry_mass, yvar = leaf_N_per_dry_mass)
+log_plot_by_family(xvar = leaf_P_per_dry_mass, yvar = leaf_N_per_dry_mass)
+dot_plot_by_family(xvar = leaf_C_per_dry_mass, yvar = leaf_N_per_dry_mass)
+dot_plot_by_family(xvar = leaf_C_per_dry_mass, yvar = leaf_P_per_dry_mass)
 
-ggplot(mapping = aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + geom_point(data = aus_data |> filter(family == 'Myrtaceae'), color = 'red')
+density_plot_by_family(xvar = leaf_N_per_dry_mass)
+density_plot_by_family(xvar = leaf_P_per_dry_mass)
+density_plot_by_family(xvar = leaf_C_per_dry_mass)
+
+ggplot(aus_data, aes(x = leaf_P_per_dry_mass, y = leaf_N_per_dry_mass)) +
+    geom_point(alpha = 0.2, size = 0.6) +
+    geom_smooth(
+      method = glm,
+      se = FALSE,
+      linetype = "dashed"
+    ) +
+    geom_abline(intercept = 0, slope = 1) +
+    coord_trans(x = "log", y = "log")
+
+ggplot(mapping = aes(x = log(leaf_P_per_dry_mass), y = log(leaf_N_per_dry_mass))) +
+    geom_point(
+      data = filter(aus_data, !family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      alpha = 0.2,
+      size = 0.6
+    ) +
+    geom_smooth(
+      data = aus_data,
+      method = lm,
+      linetype = "dashed",
+      se = FALSE
+    ) +
+    geom_point(
+      data = filter(aus_data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      alpha = 0.2,
+      size = 0.6
+    ) +
+    geom_smooth(
+      data = filter(aus_data, family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")),
+      mapping = aes(color = family),
+      method = lm,
+      se = FALSE
+    ) +
+    geom_abline(intercept = 0, slope = 1)
+
+# Other factors of interest
+dot_plot_by_factor(SN_total_0_30, leaf_N_per_dry_mass, putative_BNF)
+density_plot_by_factor(leaf_N_per_dry_mass, putative_BNF)
+density_plot_by_factor(SN_total_0_30, putative_BNF)
+
+ggplot(
+  aus_data,
+  aes(
+    x = SN_total_0_30,
+    y = leaf_N_per_dry_mass,
+    color = putative_BNF,
+    fill = putative_BNF
+  )) +
+  geom_violin(alpha = 0.4)
+
+dot_plot_by_factor(SN_total_0_30, leaf_N_per_dry_mass, myc_type)
+density_plot_by_factor(leaf_N_per_dry_mass, woodiness)
+density_plot_by_factor(SN_total_0_30, woodiness)
+
+ggplot(
+  aus_data,
+  aes(
+    x = SN_total_0_30,
+    y = leaf_N_per_dry_mass,
+    color = woodiness,
+    fill = woodiness
+  )) +
+  geom_violin(alpha = 0.4)
+
+aus_data |> filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) |>
+  ggplot(mapping = aes(
+    x = leaf_P_per_dry_mass,
+    y = leaf_N_per_dry_mass,
+    color = family,
+    fill = family
+  )) +
+  geom_violin(alpha = 0.4)
