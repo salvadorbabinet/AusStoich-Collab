@@ -47,20 +47,6 @@ add_CV_columns <- function(df) {
 #CV = 0 means no variation for that species
 
 
-#function for averaging nutrient data only
-average_nutrient_data_v1 <- function(df) {
-  nutrient_averaged_df <- df %>%
-    group_by(species_binom) %>%
-    summarize(
-      avg_leaf_N = mean(leaf_N_per_dry_mass, na.rm = TRUE),
-      avg_leaf_C = mean(leaf_C_per_dry_mass, na.rm = TRUE),
-      avg_leaf_P = mean(leaf_P_per_dry_mass, na.rm = TRUE),
-    ) %>%
-    ungroup()
-  return(nutrient_averaged_df)
-  #returns df of just species identity and associated leaf concentration
-} 
-
 #function for calculating geometric mean
 #automatically excludes all NAs
 #important note: use this function only for untransformed data
@@ -261,7 +247,6 @@ ggtree(ITS_tree) + geom_tiplab(size = 1.1) +
     mapping = aes(x = avg_leaf_C),
     orientation = "y")  + ggtitle("Average Leaf C")
 
-#pruned
 p <- ggtree(ausdata_tree) + geom_tiplab(size = 0.5)
 
 #most basic, no coloring, horizontal bar plot
@@ -269,9 +254,9 @@ p + geom_facet(
   panel = "Trait",
   data = avg_ausdata,
   geom = geom_col,
-  mapping = aes(x = avg_leaf_N),
+  mapping = aes(x = avg_leaf_C),
   orientation = "y") +
-  ggtitle("leaf N") +
+  ggtitle("avg leaf C") +
   theme(plot.title = element_text(size = 20))
 
 #-------------------------------------------------------------------------------
@@ -294,7 +279,6 @@ ITS_tree_tib <- add_relevant_columns(ITS_tree_tib, avg_ITS_sp_data)
 
 nogymn_tree_tib <- as_tibble(nogymn_tree)
 nogymn_tree_tib <- add_relevant_columns(nogymn_tree_tib, avg_no_gymn)
-#cut = 1404 ? 
 
 #ausdata
 ausdata_tree_tib <- as_tibble(ausdata_tree)
@@ -305,9 +289,10 @@ ausdata_tree_tib <- add_relevant_columns(ausdata_tree_tib, avg_ausdata)
 # "ITS_tree", cut = 105
 # "austraits", cut = 831
 # "pruned_three", cut = 473
-# "ausdata", cut = 1415 
+# "ausdata", cut = 1414 
+# Note that cut is inclusive i.e. up to and including
 
-tree_tib <- "ausdata"
+tree_tib <- "nogymn"
 
 if (tree_tib == "ITS_tree") {
   cut = 105
@@ -322,12 +307,13 @@ if (tree_tib == "nogymn") {
 }
 
 if (tree_tib== "ausdata") {
-  cut = 1415
+  cut = 1414
   tree_tib = ausdata_tree_tib
   tree = ausdata_tree
 }
 
 
+#what was prev. though to be all pos. sp.
 if (tree_tib == "austraits") {
   cut = 831
   tree_tib = aus_all_pos_sp_tree_tib_sig
