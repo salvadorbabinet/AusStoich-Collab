@@ -47,20 +47,6 @@ add_CV_columns <- function(df) {
 #CV = 0 means no variation for that species
 
 
-#function for averaging nutrient data only
-average_nutrient_data_v1 <- function(df) {
-  nutrient_averaged_df <- df %>%
-    group_by(species_binom) %>%
-    summarize(
-      avg_leaf_N = mean(leaf_N_per_dry_mass, na.rm = TRUE),
-      avg_leaf_C = mean(leaf_C_per_dry_mass, na.rm = TRUE),
-      avg_leaf_P = mean(leaf_P_per_dry_mass, na.rm = TRUE),
-    ) %>%
-    ungroup()
-  return(nutrient_averaged_df)
-  #returns df of just species identity and associated leaf concentration
-} 
-
 #function for calculating geometric mean
 #automatically excludes all NAs
 #important note: use this function only for untransformed data
