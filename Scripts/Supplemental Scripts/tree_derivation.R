@@ -7,6 +7,7 @@ library(tidytree)
 library(treeio)
 library(V.PhyloMaker2)
 
+View(as_tibble(GBOTB.extended.LCVP))
 
 #---------austraits_all_pos_sp.tre derivation---------
 austraits_all_pos_sp_df <- read_csv(here('Inputs',
