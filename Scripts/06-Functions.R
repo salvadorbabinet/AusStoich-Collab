@@ -3,10 +3,12 @@ library(tidyverse)
 library(here)
 
 
-# For parsing through aus_data
 
-#function for selecting relevant categorical and nutrient columns from aus_data
+#all of the following require aus_data-formatted input
+
 select_relevant_columns <- function(df) {
+  #function for selecting relevant categorical and nutrient columns from aus_data
+  #ln ratios not selected since geometric mean calculated from raw values
   selected_columns_df <- df[,c("species_binom", "family", "genus",
                                "woodiness", "reclass_life_history",
                                "putative_BNF", "myc_type",
@@ -16,9 +18,10 @@ select_relevant_columns <- function(df) {
 }
 
 
-#function for adding coefficient of variation column
-#for any dataframe
 add_CV_columns <- function(df) {
+  #function for adding coefficient of variation column
+  #CV = NA can mean only one entry per that species
+  #CV = 0 means no variation for that species
   CV_added_df <- df %>%
     group_by(species_binom) %>%
     mutate(CV_N = sd(leaf_N_per_dry_mass, na.rm = TRUE) / mean(leaf_N_per_dry_mass,
@@ -30,23 +33,25 @@ add_CV_columns <- function(df) {
     ungroup()
   return(CV_added_df)
 }
-#CV = NA can mean only one entry per that species
-#CV = 0 means no variation for that species
 
 
-#function for calculating geometric mean
-#automatically excludes all NAs
-#important note: use this function only for untransformed data
-#to get geometric mean of ln(ratio) data, use normal mean() function
-#this will give same result
 geometric_mean <- function(x) {
+  #function for calculating geometric mean
+  #automatically excludes all NAs
+  #important note: use this function only for untransformed data
+  #to get geometric mean of ln(ratio) data, use normal mean() function
+  #this will give same result
   exp(mean(log(x), na.rm = TRUE))
 }
 
-#function for averaging nutrient data, once covariance is added
-#also average ratios, arithmetically and geometrically
-#note that only transformed ratios should be averaged geometrically
+
 average_nutrient_data <- function(df) {
+  #function for averaging nutrient data, once covariance is added
+  #also average ratios, arithmetically and geometrically
+  #note that only transformed ratios should be averaged geometrically
+  
+  #avg = NaN means all entries for that species NA
+  #species with one observation will have same value 
   nutrient_averaged_df <- df %>%
     group_by(species_binom) %>%
     summarize(
@@ -70,14 +75,12 @@ average_nutrient_data <- function(df) {
   
   return(nutrient_averaged_df)
 }
-#avg = NaN means all entries for that species NA
-#species with one observation will have same value 
 
 
 
-
-#--------- merging tree tib with trait data
-add_relevant_columns <- function(tree_tib, avg_sp_data) {
+add_tree_trait <- function(tree_tib, avg_sp_data) {
+  #merging tree tib with trait data
+  #avg_sp_data input = output of average_nutrient_data function
   merged_tib <- left_join(tree_tib, avg_sp_data, by = c("label" = "species_binom"))
   
   return(merged_tib)
@@ -85,6 +88,7 @@ add_relevant_columns <- function(tree_tib, avg_sp_data) {
 
 
 extract_trait_values <- function(tree_tib, label_col, trait_col, cut) {
+  # trait data must be in same order as label in tree
   # tree_tib: tree tibble object with associated trait data
   # label_col: name of the column that contains name of tip.labels from tree
   # trait_col: name of the column that has trait value of interest
@@ -101,6 +105,44 @@ extract_trait_values <- function(tree_tib, label_col, trait_col, cut) {
   #return named numeric vector, of column of interest in the order 
   #of input of tree_tib
   return(trait_values)
+}
+
+
+prune_ausdata <- function(df, m) {
+  #This function creates a species observation object
+  #Uses the list it generates to get names of species that occur at
+  #certain frequencies in our data, and uses said list to remove
+  #all entries in aus_data that whose names are in list
+  #Unidirectional condition! Will only remove species LESS THAN or equal to m
+  
+  #Create species observation object:
+  #Freq, species_count, and list of species associated with Freq
+  sp_obs <- df %>%
+    count(species_binom) %>%
+    rename(Freq = n) %>%
+    arrange(desc(Freq)) %>%
+    group_by(Freq) %>%
+    summarize(
+      species_count = n(),
+      species_list = list(toString(species_binom))
+    ) %>%
+    ungroup()
+  
+  #access list of species associated with freq less than, not equal to n:
+  sp_list <- subset(sp_obs, Freq <= m)$species_list %>%
+    unlist() %>% #to properly format dif. rows as one vector
+    strsplit(", ") %>%
+    unlist()
+  #this list will be used to prune aus_data
+  
+  #Remove species with Freq < n from aus_data
+  pruned_df <- df %>%
+    filter(!species_binom %in% sp_list)
+  
+  #remove intermediates
+  rm(sp_obs, sp_list)
+  
+  return(pruned_df)
 }
 
 
