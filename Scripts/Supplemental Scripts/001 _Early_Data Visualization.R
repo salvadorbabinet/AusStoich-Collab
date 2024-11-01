@@ -6,25 +6,11 @@ library(tidyverse)
 library(cowplot)
 library(patchwork)
 
-#tidy data rules:
-# 1. Put each dataset in a tibble.
-# 2. Put each variable in a column.
-# 3. For each plot, subset relevant information. 
 
 raw_data<-read.csv("austraits_leaf_stoichiometry_MASTER.csv")
 
 austraits_leaf_stoich_tib<-as_tibble(raw_data)
 
-#---------------- Function Definitions ----------------
-
-#make a function that returns a plot
-#i guess a different one for every type of plot? 
-
-#make a function that stitches plots together 
-#have infinite inputs? will look into this 
-
-
-#------------------------------------------------------
 
 #---------------- Number of Samples per Species ----------------
 
