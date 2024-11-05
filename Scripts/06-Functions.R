@@ -78,7 +78,7 @@ average_nutrient_data <- function(df) {
 
 
 
-add_tree_trait <- function(tree_tib, avg_sp_data) {
+add_tree_traits <- function(tree_tib, avg_sp_data) {
   #merging tree tib with trait data
   #avg_sp_data input = output of average_nutrient_data function
   merged_tib <- left_join(tree_tib, avg_sp_data, by = c("label" = "species_binom"))

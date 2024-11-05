@@ -8,11 +8,36 @@ library(phytools)
 library(V.PhyloMaker2)
 library(httpgd)
 
+aus_data # from 02-Data-Import
 
-aus_data <- aus_data
-
-httpgd::hgd() #plot viewer
+httpgd::hgd() #VS code plot viewer
 hgd_browse()
+
+# How to use: ------------------------------------------------------------------
+#in the case we are using a new tree. Otherwise, conditionals already set up (end)
+
+#1. Get aus_data-formatted object of interest
+#       Only interested in nutrient columns: use select_relevant_columns()
+
+#2. Write tree based on that object then read it into script
+#       Prepare tree for writing using prune_prep_tree(), then write
+#       This will be done in tree derivation script
+#       Read tree as a tree tibble. 
+
+#3. Data entry - Add CV columns and get nutrient averages for aus_data object
+#       Using add_CV_columns() then average_nutrient_data() on aus_data-obj
+#       Note -  to prep all in one go, use:
+#       select_relevant_columns(average_nutrient_data(add_CV_columns(aus_data)))            
+
+#4. Merge trait data with tree tib object to compute signal
+#       Using add_tree_traits()
+#       Look at final object to determine row when trait data ends to determine
+#       "cut" value for next step.
+
+#5. Get trait values as named numerical vector, then compute signal 
+#      Use extract_trait_values() with "label" and "trait" unless otherwise specfied
+#      as well as unique "cut" value prev. determined
+#      compute signal using phylosig()
 
 #------------------------------Data Entry---------------------------------------
 
@@ -74,7 +99,6 @@ ausdata_tree_tib <- add_tree_trait(ausdata_tree_tib, avg_ausdata)
 # ITS tree data entry ----
 ITS_tree <- read.nexus("Inputs/Trees/ITS_tree.tre") 
 ITS_tree_tib <- as_tibble(ITS_tree)
-#need to remove irrelevant columns and add trait values 
 
 ITS_sp_data <- aus_data[aus_data$species_binom %in%
                               ITS_tree_tib$label, ]
@@ -85,11 +109,9 @@ ITS_sp_data <- add_CV_columns(ITS_sp_data)
 avg_ITS_sp_data <- average_nutrient_data(ITS_sp_data)
 
 ITS_tree_tib <- add_tree_trait(ITS_tree_tib, avg_ITS_sp_data)
-#cut at row 106, keep 105
 # end of ITS tree data entry
 
 #-------------------------------------------------------------------------------
-
 
 # Plots ----
 

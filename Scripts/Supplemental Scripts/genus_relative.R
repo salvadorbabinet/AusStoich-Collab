@@ -13,12 +13,16 @@ tips.info.LCVP
 gen_notin_LCVP <- aus_data %>%
   anti_join(tips.info.LCVP, by = "genus") %>%
   distinct(genus, species_binom, family) #to ensure no duplicates
+length(unique(gen_notin_LCVP$genus))
 #34 genera not in megatree
+#associated with 22 families
+length(unique(gen_notin_LCVP$family)) #22
 
 sp_notin_LCVP <- aus_data %>%
   anti_join(tips.info.LCVP, by = c("species_binom" = "species"))%>% 
   distinct(species_binom, genus, family)
-#587 
+length(unique(sp_notin_LCVP$species_binom))
+#587 species not fully resolved in megatree
 
 common <- intersect(
   select(gen_notin_LCVP, species_binom),
