@@ -1,5 +1,4 @@
 # AusStoich Data Import
-# Libraries & functions ----
 library(here)
 library(tidyverse)
 
@@ -15,22 +14,34 @@ all_data <- read_csv(
   )
 )
 
+all_data <- all_data %>%
+  mutate(
+    ln_NP_ratio = log(NP_ratio),
+    ln_CN_ratio = log(CN_ratio),
+    ln_CP_ratio = log(CP_ratio)
+  ) %>%
+  relocate(
+    NP_ratio, CN_ratio, CP_ratio,
+    ln_NP_ratio, ln_CN_ratio, ln_CP_ratio,
+    .after = leaf_C_per_dry_mass
+  )
+
 # LCVP name standardization - derivation in phylogeny script
 naming_corrections <- read_csv(here('Inputs', 'all_naming_corrections.csv'))
 
-all_corrected_data <- all_data |>
+all_corrected_data <- all_data %>%
   left_join(
     naming_corrections,
     by = c(
       "species_binom" = "species_before_correction",
       "genus" = "genus_before_correction",
       "family" = "family_before_correction")
-  ) |>
+  ) %>%
   mutate(
     species_binom = ifelse(!is.na(species_after_correction), species_after_correction, species_binom),
     genus = ifelse(!is.na(genus_after_correction), genus_after_correction, genus),
     family = ifelse(!is.na(family_after_correction), family_after_correction, family)
-  ) |>
+  ) %>%
   select(-species_after_correction, -genus_after_correction, -family_after_correction)
 
 # Outliers (only Fiona-confirmed, see 03-EDA for all candidates)
@@ -47,7 +58,6 @@ outliers <- all_corrected_data |>
 
 outliers_removed_data <- all_corrected_data |> setdiff(outliers)
 
-# Set aus_data to use in subsequent scripts and remove intermediates
-aus_data <- outliers_removed_data |>
-  relocate(species_binom, .before = woodiness)
-rm(all_data, naming_corrections, all_corrected_data, outliers_removed_data) 
+# Set aus_data to use in subsequent scripts and remove intermediates 
+aus_data <- outliers_removed_data |> relocate(species_binom, .before = woodiness)
+rm(all_data, outliers, naming_corrections, all_corrected_data, outliers_removed_data)
