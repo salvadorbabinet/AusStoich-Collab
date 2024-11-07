@@ -313,3 +313,5 @@ aus_data |> filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) |>
     fill = family
   )) +
   geom_violin(alpha = 0.4)
+
+aus_data |> count(myc_type)
