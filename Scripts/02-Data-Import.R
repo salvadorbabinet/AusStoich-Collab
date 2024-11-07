@@ -58,6 +58,6 @@ outliers <- all_corrected_data |>
 
 outliers_removed_data <- all_corrected_data |> setdiff(outliers)
 
-# Set aus_data to use in subsequent scripts and remove intermediates 
+# Set aus_data to use in subsequent scripts and remove intermediates
 aus_data <- outliers_removed_data |> relocate(species_binom, .before = woodiness)
 rm(all_data, outliers, naming_corrections, all_corrected_data, outliers_removed_data)
