@@ -28,7 +28,7 @@ family_nest <- aus_data |> nest_by(family) |>
         model = list(lm(leaf_N_per_dry_mass ~ SN_total_0_30, model_data)),
         results = list(tidy(model)),
         residuals = list(resid(model)),
-        GOF = list(glance(model) |> select(r.squared))
+        GOF = list(summary(model)$r.squared) # Just changed this, troubleshoot before push
     )
 
 # Object with apprended residuals
@@ -45,7 +45,7 @@ ggplot(data_plus_resid, aes(x = residuals)) + geom_histogram()
 family_nest
 family_nest |> select(family, n, results, GOF) |>
     unnest(cols = c(results, GOF)) |>
-    arrange(desc(r.squared)) |>
+    arrange(desc(GOF)) |>
     print(n = Inf)
 
 family_nest |> select(family, n, results, GOF) |>
