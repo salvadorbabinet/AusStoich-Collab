@@ -83,25 +83,17 @@ ggplot(data = aus_data) +
   geom_histogram(mapping = aes(x = leaf_P_per_dry_mass)) +
   theme_minimal()
 
-#average nutrient concentration distributions + CV
-#functions from phylogeny script
-avg_aus_data <- average_nutrient_data(
-  add_CV_columns(select_relevant_columns(aus_data)))
-
 ggplot(data = avg_aus_data) +
   geom_histogram(mapping = aes(x = CV_P)) +
   theme_minimal()
-#whoops nothing is normal
 
-#use salvador histogram function to do these properly
 ggplot(data = aus_data) +
   geom_histogram(mapping = aes(x = NP_ratio), fill = "lightgreen") +
   theme_minimal()
 
-summary(glm(log(leaf_N_per_dry_mass) ~ SN_total_0_30+PPT,
+summary(glm(log(leaf_N_per_dry_mass) ~ SN_total_0_30 + PPT,
         data = aus_data, family = "gaussian"))
-#anova on glm to assess significantce of model entirely
-#post hoc test to look inside categorical variable variance 
+
  
 #--------------------------------Species Frequency------------------------------
 species <- as.data.frame(table(aus_data$species_binom))  %>%
