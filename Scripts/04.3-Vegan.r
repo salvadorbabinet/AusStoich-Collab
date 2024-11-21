@@ -13,12 +13,6 @@ hgd_browse()
 # Separate response and numeric explanatory data
 str(aus_data)
 
-aus_NP <- aus_data |>
-    filter(!is.na(leaf_P_per_dry_mass)) |>
-    select(leaf_N_per_dry_mass:leaf_P_per_dry_mass) |>
-    mutate(across(everything(), log))
-ggplot(aus_NP, aes(x = leaf_P_per_dry_mass)) + geom_histogram()
-
 aus_explain <- aus_data |> select(where(is.numeric)) |>
     select(!Unique_ID:long_deg) |>
     filter(!is.na(leaf_P_per_dry_mass)) |>
@@ -137,8 +131,8 @@ plot(
     bg = c("azure2", "azure2", "lightskyblue1", "indianred")
 )
 
-
-# Run RDAs to test significance of each fraction.
+# To-do: check results with co-linear variables removed
+# Run RDAs to test significance of each fraction. ----
 anova.cca(rda(aus_N, aus_family))
 anova.cca(rda(aus_N, aus_traits))
 anova.cca(rda(aus_N, aus_climate))
@@ -150,3 +144,50 @@ anova.cca(rda(aus_N, aus_soil))
 # Variance in N explained by family, controlling for trait
 # I.e., family alone
 anova.cca(rda(aus_N, aus_family, aus_traits)) # Significant
+
+
+# Run with N and P ----
+aus_narm_P <- aus_data |> filter(!is.na(leaf_P_per_dry_mass))
+
+filter(aus_data, is.na(woodiness)) |> select(woodiness, leaf_P_per_dry_mass)
+ggplot(aus_narm_P, aes(x = leaf_P_per_dry_mass)) + geom_histogram()
+
+aus_soil <- aus_narm_P |> select(SN_total_0_30:NPP) |> # Is NPP a soil var?
+    mutate(across(everything(), log)) |>
+    decostand(method = "standardize") |>
+    tibble()
+aus_climate <- aus_narm_P |> select(MAT:temp_seasonality) |>
+    mutate(across(everything(), log)) |>
+    decostand(method = "standardize") |>
+    tibble()
+aus_traits <- aus_narm_P |> select(woodiness:putative_BNF)
+aus_family <- aus_narm_P |> select(family)
+aus_NP <- aus_narm_P |> select(leaf_N_per_dry_mass:leaf_P_per_dry_mass) |>
+    mutate(across(everything(), log)) |>
+    decostand(method = "standardize") |>
+    tibble()
+
+aus_variance <- varpart(
+    aus_NP,
+    aus_soil,
+    aus_climate,
+    aus_traits,
+    aus_family
+)
+aus_variance 
+plot(
+    aus_variance,
+    Xnames = c("Soil", "Climate", "Traits", "Family"),
+    bg = c("azure2", "azure2", "lightskyblue1", "indianred")
+)
+
+# Significance check
+anova.cca(rda(aus_NP, aus_family))
+anova.cca(rda(aus_NP, aus_traits))
+anova.cca(rda(aus_NP, aus_climate))
+anova.cca(rda(aus_NP, aus_soil))
+# These are all significant
+anova.cca(rda(aus_NP, aus_family, aus_traits))
+anova.cca(rda(aus_NP, aus_family, aus_soil))
+
+
