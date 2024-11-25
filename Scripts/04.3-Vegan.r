@@ -191,3 +191,22 @@ anova.cca(rda(aus_NP, aus_family, aus_traits))
 anova.cca(rda(aus_NP, aus_family, aus_soil))
 
 
+# P only
+aus_P <- aus_narm_P |> select(leaf_P_per_dry_mass) |>
+    mutate(across(everything(), log)) |>
+    decostand(method = "standardize") |>
+    tibble()
+
+aus_variance <- varpart(
+    aus_P,
+    aus_soil,
+    aus_climate,
+    aus_traits,
+    aus_family
+)
+aus_variance 
+plot(
+    aus_variance,
+    Xnames = c("Soil", "Climate", "Traits", "Family"),
+    bg = c("azure2", "azure2", "lightskyblue1", "indianred")
+)
