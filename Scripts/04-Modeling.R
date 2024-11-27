@@ -146,7 +146,7 @@ simple_reg <- lm(log_outcome ~ precipitation_seasonality, simple_reg_data)
 simple_regression_outputs(precipitation_seasonality, leaf_N_per_dry_mass)
 
 
-# Does removing single-sp. observations change things?
+# Does removing single-sp. observations change things? ----
 multiple_observed_species <- aus_data |> count(species_binom) |> filter(n > 2)
 pruned_data <- aus_data |> filter(species_binom %in% multiple_observed_species$species_binom)
 
@@ -265,12 +265,12 @@ n3 <- ggplot(aus_test, aes(x = leaf_N_per_dry_mass)) +
   ggtitle('Testing data')
 
 # Check leaf N stratification 
-n1 + n2 + n3 
+n1 + n2 + n3
 rm(n1, n2, n3)
 
 # Initial recipe with PCA pre-requirements 
 aus_rec <- recipe(leaf_N_per_dry_mass ~ ., data = aus_train) |> 
-  update_role(dataset_id:myc_type, new_role = 'factor') |> 
+  update_role(dataset_id:ln_CP_ratio, new_role = 'tag') |> 
   step_zv(all_numeric_predictors()) |> 
   step_orderNorm(all_numeric_predictors()) |> 
   step_normalize(all_numeric_predictors()) |> 
@@ -296,14 +296,14 @@ p1 + p2
 # Add PCA step 
 aus_pca <- aus_rec |> 
   step_pca(all_numeric_predictors(), num_comp = 4) |> 
-  prep() 
+  prep()
 aus_pca
 
 # Variance coverage and loadings 
 pca_extract <- aus_pca$steps[[4]]
 glimpse(pca_extract)
 
-pca_variance <- pca_extract |> tidy(type = 'variance') 
+pca_variance <- pca_extract |> tidy(type = 'variance')
 pca_variance |> 
   filter(terms %in% c('percent variance', 'cumulative percent variance')) |> 
   pivot_wider(names_from = terms, values_from = value) |> 
@@ -333,14 +333,14 @@ ggplot(aes(x = value, y = terms)) +
   geom_col() + 
   facet_wrap(~component) +
   labs(
-    title = 'Loadings plot of top 6 components (93.5% variance explained)',
+    title = 'Loadings plot of top 6 components (95.2% variance explained)',
     x = 'Contribution',
     y = 'Term'
   )
 
 # Then bake and plot components to view scores
-aus_pca_processed <- aus_pca |> bake(where(is.numeric), new_data = aus_test)
-aus_pca_processed
+aus_pca_processed <- aus_pca |> bake(all_predictors(), new_data = aus_test)
+aus_pca_processed # Includes numeric tag variables
 
 # Plot w/o additional visualization 
 aus_pca_processed |> ggplot(aes(x = .panel_x, y = .panel_y)) +
