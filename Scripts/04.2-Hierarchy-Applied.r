@@ -5,7 +5,7 @@ theme_set(theme_bw())
 library(broom)
 library(patchwork)
 
-# Intercept and slope plot for a nest object and definined nesting factor
+# Intercept and slope plots for a definined nesting factor
 intercept_slope <- function(nest, nest_def) {
     nest |> select({{nest_def}}, n, results, GOF) |>
         unnest(cols = c(results, GOF)) |>
@@ -22,38 +22,8 @@ intercept_slope <- function(nest, nest_def) {
         theme(axis.text.x = element_text(angle = 90))
 }
 
-intercept_slope_bins <- function(nest, nest_def) {
-    nest |> select({{nest_def}}, n, results, GOF) |>
-        unnest(cols = c(results, GOF)) |>
-        ggplot(mapping = aes(
-            x = {{nest_def}},
-            y = estimate,
-            ymin = estimate - std.error,
-            ymax = estimate + std.error,
-            color = GOF
-            )
-        ) +
-        geom_pointrange() +
-        facet_wrap(~term, scales = "free") +
-        theme(axis.text.x = element_text(angle = 90))
-}
-
-intercept_slope_bins_no_x <- function(nest, nest_def) {
-    nest |> select({{nest_def}}, n, results, GOF) |>
-        unnest(cols = c(results, GOF)) |>
-        ggplot(mapping = aes(
-            x = {{nest_def}},
-            y = estimate,
-            ymin = estimate - std.error,
-            ymax = estimate + std.error,
-            color = GOF
-            )
-        ) +
-        geom_pointrange() +
-        facet_wrap(~term, scales = "free") +
-        theme(axis.text.x = element_blank())
-}
-
+# Intercept and slope plots without x-axis labels
+# Useful for looking at entire nested object instead of a subset
 intercept_slope_no_x <- function(nest, nest_def) {
     nest |> select({{nest_def}}, n, results, GOF) |>
         unnest(cols = c(results, GOF)) |>
@@ -70,15 +40,68 @@ intercept_slope_no_x <- function(nest, nest_def) {
         theme(axis.text.x = element_blank())
 }
 
-scatter_intercept_slope <- function(nest, nest_def) {
+# Intercept and slope plots for a binned continuous nesting variable
+# Does not re-order bins by term estimate
+intercept_slope_bins <- function(nest, nest_def) {
+    nest |> select({{nest_def}}, n, results, GOF) |>
+        unnest(cols = c(results, GOF)) |>
+        ggplot(mapping = aes(
+            x = {{nest_def}},
+            y = estimate,
+            ymin = estimate - std.error,
+            ymax = estimate + std.error,
+            color = GOF
+            )
+        ) +
+        geom_pointrange() +
+        facet_wrap(~term, scales = "free") +
+        theme(axis.text.x = element_text(angle = 90))
+}
+
+# Same as above, but without x-axis labels
+# Does not re-order bins by term estimate
+intercept_slope_bins_no_x <- function(nest, nest_def) {
+    nest |> select({{nest_def}}, n, results, GOF) |>
+        unnest(cols = c(results, GOF)) |>
+        ggplot(mapping = aes(
+            x = {{nest_def}},
+            y = estimate,
+            ymin = estimate - std.error,
+            ymax = estimate + std.error,
+            color = GOF
+            )
+        ) +
+        geom_pointrange() +
+        facet_wrap(~term, scales = "free") +
+        theme(axis.text.x = element_blank())
+}
+
+# Plot intercept and slope estimates against each other
+# Instead of separate plots
+scatter_intercept_slope <- function(nest, nest_def, yvar) {
     nest |> select({{nest_def}}, results) |>
         unnest(cols = results) |>
         select({{nest_def}}, term, estimate) |>
         pivot_wider(names_from = term, values_from = estimate) |>
-        ggplot(aes(x = `(Intercept)`, y = SN_total_0_30)) +
+        ggplot(aes(x = `(Intercept)`, y = {{yvar}})) +
             geom_point() +
             geom_smooth(method = "lm", se = FALSE) +
             labs(x = "Intercept Estimate", y = "Coefficient Estimate")
+}
+
+# Plot distribution of estimates as a histogram
+estimate_histogram <- function(nest, nest_def, xvar) {
+    plot_data <- nest |> select({{nest_def}}, results) |>
+        unnest(cols = results) |>
+        select({{nest_def}}, term, estimate) |>
+        pivot_wider(names_from = term, values_from = estimate)
+    
+    p1 <- ggplot(plot_data, aes(x = `(Intercept)`)) + geom_histogram() +
+        labs(x = "Intercept Estimate", y = "Frequency")
+    p2 <- ggplot(plot_data, aes(x = {{xvar}})) + geom_histogram() +
+        labs(x = "Coefficient Estimate", y = "Frequency")
+
+    plot(p1 + p2)
 }
 
 
@@ -87,7 +110,7 @@ str(aus_data)
 aus_data |> count(family) |> arrange(desc(n)) |> filter(n > 30)
 aus_data |> count(genus) |> arrange(desc(n))
 
-# Log leaf N
+# Log leaf N ~ log soil N
 family_nest <- aus_data |> nest_by(family) |>
     mutate(
         n = nrow(data),
@@ -123,7 +146,7 @@ family_nest
 family_nest |> select(family, n, results, GOF) |>
     unnest(cols = c(results, GOF)) |>
     arrange(desc(GOF)) |>
-    print(n = Inf) 
+    print(n = Inf)
 # 1 family with R2 > 0.7, 5 families with R2 > 0.5
 
 # Plot intercepts and slopes by family
@@ -143,63 +166,108 @@ p1 <- intercept_slope_no_x(family_nest, family) +
         x = "Family")
 p1
 
-# Plot how term estimates change with intercept estimates
-scatter_intercept_slope(family_nest, family)
-
-# Intercept distribution
-p1 <- family_nest |> select(family, results) |>
-    unnest(cols = results) |>
-    select(family, term, estimate) |>
-    pivot_wider(names_from = term, values_from = estimate) |>
-    ggplot(aes(x = `(Intercept)`)) + geom_histogram() +
-    labs(x = "Intercept Estimate", y = "Frequency")
-
-# Coefficient distribution
-p2 <- family_nest |> select(family, results) |>
-    unnest(cols = results) |>
-    select(family, term, estimate) |>
-    pivot_wider(names_from = term, values_from = estimate) |>
-    ggplot(aes(x = SN_total_0_30)) + geom_histogram() +
-    labs(x = "Coefficient Estimate", y = "Frequency")
-
-p1 + p2
-
-
-
-# Plots to compare centering / scaling ----
-p1 <- ggplot(aus_data, aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + geom_point()
-p2 <- ggplot(unnest(family_nest, centered_data), aes(x = SN_total_0_30, y = leaf_N_per_dry_mass)) + geom_point()
-p1 + p2
-
-h1 <- ggplot(aus_data, aes(x = SN_total_0_30)) + geom_histogram()
-h2 <- ggplot(unnest(family_nest, centered_data), aes(x = SN_total_0_30)) + geom_histogram()
-h1 + h2
-
-h1 <- ggplot(aus_data, aes(x = leaf_N_per_dry_mass)) + geom_histogram()
-h2 <- ggplot(unnest(family_nest, centered_data), aes(x = leaf_N_per_dry_mass)) + geom_histogram()
-h1 + h2
+scatter_intercept_slope(family_nest, family, SN_total_0_30) # Term- to intercept-estimates
+estimate_histogram(family_nest, family, SN_total_0_30) # Estimate distributions
 
 
 # Sample model ----
+ggplot(aus_data, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass))) +
+  geom_point() + geom_smooth(method = "lm", se = FALSE)
+
+summary(lm(log(leaf_N_per_dry_mass) ~ log(SN_total_0_30), data = aus_data))
+summary(lm(log(leaf_N_per_dry_mass) ~ SN_total_0_30, data = aus_data))
+
+# Ecological reason for investigating Fabaceae 
 lm_data <- unnest(family_nest, model_data) |>
-    filter(family == "Fabaceae") |>
+    filter(family == "Winteraceae") |>
     select(leaf_N_per_dry_mass, SN_total_0_30)
+
+ggplot(lm_data, aes(x = exp(SN_total_0_30), y = exp(leaf_N_per_dry_mass))) + geom_point()
 
 lm_fab <- lm(leaf_N_per_dry_mass ~ SN_total_0_30, lm_data)
 plot(lm_fab)
-test <- summary(lm_fab)
 
-comparison_data <- aus_data |>
-    filter(family == "Amaranthaceae") |>
+# High n and GOF for log(leaf N) to log(soil N)
+lm_data <- unnest(family_nest, model_data) |>
+    filter(family == "Rhamnaceae") |>
     select(leaf_N_per_dry_mass, SN_total_0_30)
 
-lm_compare <- lm(leaf_N_per_dry_mass ~ SN_total_0_30, comparison_data)
-plot(lm_compare) 
-summary(lm_compare) # Centering predictor does not change model
-ggplot(data = lm_amar, mapping = aes(x = lm_amar$residuals)) + geom_histogram()
+lm_rham <- lm(leaf_N_per_dry_mass ~ SN_total_0_30, lm_data)
+plot(lm_rham)
+summary(lm_rham)
+
+ggplot(lm_data, aes(x = exp(SN_total_0_30), y = exp(leaf_N_per_dry_mass))) + geom_point() +
+    stat_function(fun = \(x) exp(3.34)* x ^ 0.34)
+
+# How does model change without logging soil N?
+lm_rham <- lm(
+    log(leaf_N_per_dry_mass) ~ log(SN_total_0_30),
+    filter(aus_data, family == "Rhamnaceae")
+    )
+
+summary(lm_rham) # Similar R2, different estimates
+plot(lm_rham)
+
+ggplot(
+    filter(aus_data, family == "Rhamnaceae"),
+    aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass))
+    ) + geom_point() + geom_smooth()
 
 
-# Latitude nesting?
+# Log leaf N ~ untransformed soil N ---- 
+# Changes intercept-coefficient relationship
+family_nest <- aus_data |> nest_by(family) |>
+    mutate(
+        n = nrow(data),
+        model_data = list(
+            mutate(
+                data,
+                leaf_N_per_dry_mass = log(leaf_N_per_dry_mass),
+                SN_total_0_30 = SN_total_0_30,
+                .keep = "used"
+            )
+        )
+    ) |>
+    filter(n > 7) |>
+    mutate(
+        model = list(lm(leaf_N_per_dry_mass ~ SN_total_0_30, model_data)),
+        results = list(tidy(model)),
+        residuals = list(resid(model)),
+        GOF = list(summary(model)$r.squared)
+    )
+
+intercept_slope_no_x(family_nest, family)
+scatter_intercept_slope(family_nest, family, SN_total_0_30)
+estimate_histogram(family_nest, family, SN_total_0_30)
+
+
+# Log leaf N ~ other variables, nested b
+# MAT
+family_nest <- aus_data |> nest_by(family) |>
+    mutate(
+        n = nrow(data),
+        model_data = list(
+            mutate(
+                data,
+                leaf_N_per_dry_mass = log(leaf_N_per_dry_mass),
+                MAT = MAT,
+                .keep = "used"
+            )
+        )
+    ) |>
+    filter(n > 7) |>
+    mutate(
+        model = list(lm(leaf_N_per_dry_mass ~ MAT, model_data)),
+        results = list(tidy(model)),
+        residuals = list(resid(model)),
+        GOF = list(summary(model)$r.squared)
+    )
+
+intercept_slope_no_x(family_nest, family)
+scatter_intercept_slope(family_nest, family, MAT)
+estimate_histogram(family_nest, family, MAT)
+
+# Latitude nesting? ----
 latitude_nest <- aus_data |>
     mutate(lat_deg = cut(lat_deg, 150)) |>
     nest_by(lat_deg) |>
@@ -228,4 +296,6 @@ p1 <- intercept_slope_bins_no_x(latitude_nest, lat_deg)
 p2 <- intercept_slope_no_x(latitude_nest, lat_deg)
 p1 + p2
 
-scatter_intercept_slope(latitude_nest, lat_deg)
+scatter_intercept_slope(latitude_nest, lat_deg, SN_total_0_30)
+estimate_histogram(latitude_nest, lat_deg, SN_total_0_30)
+
