@@ -5,9 +5,48 @@ theme_set(theme_bw())
 library(broom)
 library(patchwork)
 
-# Nesting functions ----
+library(httpgd)
+hgd()
+hgd_browse()
+
+# Scatter plot simple relationship
+scatter_plot <- function(xvar, yvar, data = aus_data) {
+    ggplot(data, aes(x = {{xvar}}, y = {{yvar}})) +
+        geom_point(alpha = 0.5) +
+        geom_smooth() + geom_smooth(method = "lm", linetype = "dashed")
+}
+
+# Nesting functions
+# Nest object makers ----
+# Make nest object by pre-determined categorical variable
+# I use this to nest by family, but other factors might work
+categorical_nest <- function(outcome, predictor, obs_min, tb = aus_data) {
+    tb |> nest_by(family) |>
+    mutate(
+        n = nrow(data),
+        model_data = list(
+            mutate(
+                data,
+                outcome = ({{outcome}}),
+                predictor = ({{predictor}}),
+                .keep = "used"
+            )
+        )
+    ) |>
+    filter(n > obs_min) |>
+    mutate(
+        model = list(lm(outcome ~ predictor, model_data)),
+        results = list(tidy(model)),
+        fitted = list(fitted(model)),
+        residuals = list(resid(model)),
+        GOF = list(summary(model)$r.squared)
+    )
+}
+
+
+# Nest visualizations ----
 # Intercept and slope plots for a definined nesting factor
-intercept_slope <- function(nest, nest_def, yvar, xvar) {
+intercept_slope <- function(nest, nest_def, yvar, xvar, obs_min) {
     nest |> select({{nest_def}}, n, results, GOF) |>
         unnest(cols = c(results, GOF)) |>
         ggplot(mapping = aes(
@@ -22,14 +61,15 @@ intercept_slope <- function(nest, nest_def, yvar, xvar) {
         facet_wrap(~term, scales = "free") +
         theme(axis.text.x = element_text(angle = 90)) +
         labs(
-            title = rlang::englue("Intercepts and slopes for {{xvar}} ~ {{yvar}} across families"),
-            subtitle = "Observations: n > 30",
-            x = "Family")
+            title = rlang::englue("Intercepts and slopes for {{yvar}} ~ {{xvar}} across families"),
+            subtitle = rlang::englue("Observations: n > {{obs_min}}"),
+            x = rlang::englue("{{nest_def}}")
+        )
 }
 
 # Intercept and slope plots without x-axis labels
 # Useful for looking at entire nested object instead of a subset
-intercept_slope_no_x <- function(nest, nest_def) {
+intercept_slope_no_x <- function(nest, nest_def, yvar, xvar, obs_min) {
     nest |> select({{nest_def}}, n, results, GOF) |>
         unnest(cols = c(results, GOF)) |>
         ggplot(mapping = aes(
@@ -42,7 +82,11 @@ intercept_slope_no_x <- function(nest, nest_def) {
         ) +
         geom_pointrange() +
         facet_wrap(~term, scales = "free") +
-        theme(axis.text.x = element_blank())
+        theme(axis.text.x = element_blank()) +
+        labs(
+            title = rlang::englue("Intercepts and slopes for {{yvar}} ~ {{xvar}} across families"),
+            subtitle = rlang::englue("Observations: n > {{obs_min}}"),
+            x = rlang::englue("{{nest_def}}"))
 }
 
 # Intercept and slope plots for a binned continuous nesting variable
@@ -110,13 +154,12 @@ estimate_histogram <- function(nest, nest_def, xvar) {
 }
 
 
-# Taxonomic nesting? ----
+# Taxonomic nesting?
 str(aus_data)
 aus_data |> count(family) |> arrange(desc(n)) |> filter(n > 30)
 aus_data |> count(genus) |> arrange(desc(n))
 
-# Log leaf N ~ predictors 
-# ~ log soil N
+# Log leaf N ~ log soil N ----
 family_nest <- aus_data |> nest_by(family) |>
     mutate(
         n = nrow(data),
@@ -146,39 +189,6 @@ data_plus_resid <- family_nest |>
 
 ggplot(data_plus_resid, aes(x = residuals)) + geom_histogram()
 
-# Scatter plot simple relationship
-scatter_plot <- function(xvar, yvar, data = aus_data) {
-    ggplot(data, aes(x = {{xvar}}, y = {{yvar}})) +
-        geom_point(alpha = 0.5) +
-        geom_smooth()
-}
-
-# Make nest object
-categorical_nest <- function(outcome, predictor, obs_min, tb = aus_data) {
-    tb |> nest_by(family) |>
-    mutate(
-        n = nrow(data),
-        model_data = list(
-            mutate(
-                data,
-                out = log({{outcome}}),
-                pred = log({{predictor}}),
-                .keep = "used"
-            )
-        )
-    ) |>
-    filter(n > obs_min) |>
-    mutate(
-        model = list(lm(out ~ pred, model_data)),
-        results = list(tidy(model)),
-        residuals = list(resid(model)),
-        GOF = list(summary(model)$r.squared)
-    )
-}
-
-scatter_plot(MAT, leaf_N_per_dry_mass)
-family_nest <- categorical_nest(leaf_N_per_dry_mass, MAT, 7)
-
 
 # Plotting nested results ----
 family_nest
@@ -190,7 +200,7 @@ family_nest |> select(family, n, results, GOF) |>
 
 # Plot intercepts and slopes by family
 # For family_nest with a few families, label the x axis
-p1 <- intercept_slope(family_nest, family, leaf N, soil N) +
+p1 <- intercept_slope(family_nest, family) +
     labs(
         title = "Intercepts and slopes for leaf N ~ soil N across families",
         subtitle = "Observations: n > 30",
@@ -280,31 +290,64 @@ scatter_intercept_slope(family_nest, family, SN_total_0_30)
 estimate_histogram(family_nest, family, SN_total_0_30)
 
 
-# Log leaf N ~ other variables, nested b
-# MAT
-family_nest <- aus_data |> nest_by(family) |>
-    mutate(
-        n = nrow(data),
-        model_data = list(
-            mutate(
-                data,
-                leaf_N_per_dry_mass = log(leaf_N_per_dry_mass),
-                MAT = MAT,
-                .keep = "used"
-            )
-        )
-    ) |>
-    filter(n > 7) |>
-    mutate(
-        model = list(lm(leaf_N_per_dry_mass ~ MAT, model_data)),
-        results = list(tidy(model)),
-        residuals = list(resid(model)),
-        GOF = list(summary(model)$r.squared)
-    )
+# Log leaf N ~ other variables, nested by family
+# Using nesting functions to optimize process
+# MAT ----
+scatter_plot(log(MAT), log(leaf_N_per_dry_mass))
+summary(lm(log(leaf_N_per_dry_mass) ~ log(MAT), aus_data)) # Very poor R2
+family_nest <- categorical_nest(leaf_N_per_dry_mass, MAT, 30)
 
-intercept_slope_no_x(family_nest, family)
-scatter_intercept_slope(family_nest, family, MAT)
-estimate_histogram(family_nest, family, MAT)
+intercept_slope(family_nest, family, `foliar N`, `MAT`, 30)
+intercept_slope_no_x(family_nest, family, `foliar N`, `MAT`, 7)
+
+# Investigate model for families w/ high n and GOF
+family_nest |> unnest(GOF) |>
+    arrange(desc(GOF)) |>
+    filter(n > 20) # Potentially good fit for Picrodendraceae, Malvaceae
+
+# Can plot raw and log-transformed values against each other
+# By changing aes()
+family_nest |> filter(family %in% c("Picrodendraceae", "Malvaceae")) |>
+    unnest(model_data) |> filter(family == "Malvaceae") |>
+    ggplot(aes(x = MAT, y = leaf_N_per_dry_mass)) +
+    geom_point() + geom_smooth(method = lm)
+
+family_nest |> filter(family %in% c("Picrodendraceae", "Malvaceae")) |>
+    unnest(results) |> select(family, term:p.value)
+
+family_nest |> filter( family == "Malvaceae") |>
+    select(family, fitted, residuals) |> 
+    unnest(everything()) |>
+    ggplot(aes(x = fitted, y = residuals)) + geom_point()
+
+family_nest |> filter( family == "Malvaceae") |>
+    select(family, fitted, residuals) |> 
+    unnest(everything()) |>
+    ggplot(aes(x = residuals)) + geom_histogram()
+
+# Validate against model w/o transformed MAT
+log_raw <- family_nest |> filter( family == "Malvaceae") |>
+    select(family, model_data) |> unnest(model_data)
+log_raw_model <- lm(outcome ~ MAT, log_raw)
+summary(log_raw_model) # Better R2 with log-log compared to log-raw
+ggplot(log_raw_model, aes(x = .fitted, y = .resid)) + geom_point()
+ggplot(log_raw_model, aes(x = .resid)) + geom_histogram()
+# Residual plots and distributions similar
+
+
+# PPT ----
+# No compelling estimate magnitudes
+scatter_plot(PPT, log(leaf_N_per_dry_mass))
+summary(lm(log(leaf_N_per_dry_mass) ~ PPT, aus_data)) # Not logarithmic
+
+family_nest <- categorical_nest(log(leaf_N_per_dry_mass), log(PPT), 7)
+intercept_slope(family_nest, family, `log leaf N`, `log PPT`, 30)
+intercept_slope_no_x(family_nest, family, `log leaf N`, `log PPT`, 7)
+
+family_nest <- categorical_nest(log(leaf_N_per_dry_mass), PPT, 7)
+intercept_slope(family_nest, family, `log leaf N`, `PPT`, 30)
+intercept_slope_no_x(family_nest, family, `log leaf N`, `PPT`, 7)
+
 
 # Latitude nesting? ----
 latitude_nest <- aus_data |>
