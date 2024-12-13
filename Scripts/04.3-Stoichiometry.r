@@ -1,10 +1,14 @@
 # Stoichiometric hierarchy
 # Libraries and functions
+library(httpgd)
+hgd()
+hgd_browse()
+
 # Scatter plot simple relationship
 scatter_plot <- function(xvar, yvar, data = aus_data) {
     ggplot(data, aes(x = {{xvar}}, y = {{yvar}})) +
         geom_point(alpha = 0.5) +
-        geom_smooth() + geom_smooth(method = "lm", linetype = "dashed")
+        geom_smooth(se = FALSE) + geom_smooth(method = "lm", linetype = "dashed")
 }
 
 
@@ -176,10 +180,19 @@ estimate_histogram <- function(nest, nest_def, xvar) {
 
 
 aus_NP <- aus_data |> filter(!is.na(leaf_P_per_dry_mass)) |>
-#    mutate(ln_NP = log(NP_ratio)) |>
-#    relocate(ln_NP, .after = NP_ratio)
+    mutate(ln_NP = log(NP_ratio)) |>
+    relocate(ln_NP, .after = NP_ratio)
 ggplot(aus_NP, aes(x = log(NP_ratio))) + geom_histogram()
 
+aus_NP |> count(species_binom) |> arrange(desc(n)) # Eucalypts and acacias...
+aus_NP |> filter(species_binom == "Acacia_rostellifera")
+
+scatter_plot(
+    AP_total_0_30,
+    ln_NP,
+    data = filter(aus_NP, species_binom == "Melaleuca_systena"))
+
+# Acacia_rostellifera, Flindersia_bourjotiana
 
 # Categorical cut (taxonomy)
 ggplot(aus_NP, aes(x = log(SN_total_0_30), y = log(NP_ratio))) +
