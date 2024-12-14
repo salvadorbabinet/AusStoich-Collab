@@ -31,4 +31,48 @@ aus_data |> filter(woodiness == 1 & reclass_life_history == 'short') |>
 
 
 # Are missing data systematic? ----
+aus_NPC <- filter(aus_data, if_all(c(leaf_P_per_dry_mass, leaf_C_per_dry_mass), \(x) !is.na(x)))
+
+ggplot(mapping = aes(x = log(leaf_N_per_dry_mass))) +
+  geom_density(data = aus_data, fill = "cyan", alpha = 0.5) +
+  geom_density(data = aus_NP, fill = "firebrick", alpha = 0.5)
+
+p1 <- ggplot(mapping = aes(x = leaf_N_per_dry_mass)) +
+  geom_density(data = aus_data, fill = "grey", alpha = 0.5) +
+  geom_density(data = aus_NPC, fill = "cyan", alpha = 0.5) +
+  labs(x = "Foliar Nitrogen", y = "Density")
+
+p2 <- ggplot(mapping = aes(x = SN_total_0_30)) +
+  geom_density(data = aus_data, fill = "grey", alpha = 0.5) +
+  geom_density(data = aus_NPC, fill = "cyan", alpha = 0.5) +
+  labs(x = "Soil Total Nitrogen", y = " ")
+
+p1 + p2
+
+p3 <- ggplot(mapping = aes(x = SP_total_0_30)) +
+  geom_density(data = aus_data, fill = "grey", alpha = 0.5) +
+  geom_density(data = aus_NPC, fill = "cyan", alpha = 0.5) +
+  xlim(0, 0.06) +
+  labs(x = "Soil Total Phosphorus", y = "Density")
+
+p4 <- ggplot(mapping = aes(x = AP_total_0_30)) +
+  geom_density(data = aus_data, fill = "grey", alpha = 0.5) +
+  geom_density(data = aus_NPC, fill = "cyan", alpha = 0.5) +
+  labs(x = "Soil Available Phosphorus", y = " ")
+
+p1 + p2 + p3 + p4
+
+p5 <- ggplot(mapping = aes(x = leaf_P_per_dry_mass)) +
+  geom_density(data = aus_data, fill = "grey", alpha = 0.5) +
+  geom_density(data = aus_NPC, fill = "cyan", alpha = 0.5) +
+  labs(x = "Foliar Phosphorus", y = "Density")
+
+p6 <- ggplot(mapping = aes(x = ln_NP_ratio)) +
+  geom_density(data = aus_data, fill = "grey", alpha = 0.5) +
+  geom_density(data = aus_NPC, fill = "cyan", alpha = 0.5) +
+  labs(x = "N:P Ratio", y = "Density")
+
+p6 + p2 + p3 + p4
+
+
 # Sofia visualizations here

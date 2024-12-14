@@ -38,6 +38,31 @@ categorical_nest <- function(outcome, predictor, obs_min, tb = aus_data) {
     )
 }
 
+# Nesting with more complex formulae (multiple regression)
+categorical_nest_multi <- function(outcome, pred1, pred2, obs_min, tb = aus_data) {
+    tb |> nest_by(family) |>
+    mutate(
+        n = nrow(data),
+        model_data = list(
+            mutate(
+                data,
+                outcome = {{outcome}},
+                pred1 = {{pred1}},
+                pred2 = {{pred2}},
+                .keep = "used"
+            )
+        )
+    ) |>
+    filter(n > obs_min) |>
+    mutate(
+        model = list(lm(outcome ~ pred1 + pred2, model_data)),
+        results = list(tidy(model)),
+        fitted = list(fitted(model)),
+        residuals = list(resid(model)),
+        GOF = list(summary(model)$r.squared)
+    )
+}
+
 # Make nest object by cut continuous variable
 # To investigate how climate, etc. mediate interactions
 continuous_nest <- function(nest_def, cut_number, outcome, predictor, obs_min, tb = aus_data) {
@@ -112,7 +137,7 @@ intercept_slope_no_x <- function(nest, nest_def, yvar, xvar, obs_min) {
 
 # Intercept and slope plots for a binned continuous nesting variable
 # Does not re-order bins by term estimate
-intercept_slope_bins <- function(nest, nest_def = nest_def) {
+intercept_slope_bins_labeled <- function(nest, nest_def = nest_def) {
     nest |> select({{nest_def}}, n, results, GOF) |>
         unnest(cols = c(results, GOF)) |>
         ggplot(mapping = aes(
@@ -179,9 +204,7 @@ estimate_histogram <- function(nest, nest_def, xvar) {
 }
 
 
-aus_NP <- aus_data |> filter(!is.na(leaf_P_per_dry_mass)) |>
-    mutate(ln_NP = log(NP_ratio)) |>
-    relocate(ln_NP, .after = NP_ratio)
+aus_NP <- aus_data |> filter(!is.na(leaf_P_per_dry_mass))
 ggplot(aus_NP, aes(x = log(NP_ratio))) + geom_histogram()
 
 aus_NP |> count(species_binom) |> arrange(desc(n)) # Eucalypts and acacias...
@@ -189,22 +212,24 @@ aus_NP |> filter(species_binom == "Acacia_rostellifera")
 
 scatter_plot(
     AP_total_0_30,
-    ln_NP,
+    ln_NP_ratio,
     data = filter(aus_NP, species_binom == "Melaleuca_systena"))
 
 # Acacia_rostellifera, Flindersia_bourjotiana
 
+
 # Categorical cut (taxonomy)
+# Simple regression ----
 ggplot(aus_NP, aes(x = log(SN_total_0_30), y = log(NP_ratio))) +
     geom_point(alpha = 0.5) + geom_smooth(method = "lm")
- summary(lm(log(NP_ratio) ~ log(AP_total_0_30), aus_NP))
+ 
+summary(lm(log(NP_ratio) ~ log(SP_total_0_30), aus_NP))
 
-family_nest <- categorical_nest(log(NP_ratio), log(AP_total_0_30), 9, aus_NP)
+family_nest <- categorical_nest(log(NP_ratio), log(SN_total_0_30), 9, aus_NP)
 family_nest |> unnest(GOF) |> arrange(desc(GOF)) |>
-    select(!c(data, model_data, model)) |>
-    print(n = 20)
+    select(!c(data, model_data, model))
 
-intercept_slope_no_x(family_nest, family, `log leaf NP`, `log AP`, 9)
+intercept_slope_no_x(family_nest, family, `log leaf NP`, `log SN`, 9)
 
 family_nest <- categorical_nest(log(leaf_P_per_dry_mass), log(AP_total_0_30), 9, aus_NP)
 family_nest |> unnest(GOF) |> arrange(desc(GOF)) |>
@@ -233,7 +258,15 @@ family_nest |> filter(family == "Cyperaceae") |>
         y = "Log N:P", x = "Log Available P")
 
 
-# Continuous cuts
+# Multiple regression ----
+family_nest <- categorical_nest_multi(ln_NP_ratio, log(SN_total_0_30), log(AET), 9, aus_NP)
+family_nest |> select(family, n, results, GOF) |>
+    unnest(c(results, GOF))
+
+intercept_slope_no_x(family_nest, family, `ln leaf N:P`, `ln SN + ln SP`, 10)
+
+
+# Continuous cuts ----
 # MAT
 MAT_nest <- continuous_nest(MAT, 200, log(NP_ratio), log(AP_total_0_30), 9, aus_NP)
 MAT_nest <- MAT_nest |> rename(MAT = nest_def)
