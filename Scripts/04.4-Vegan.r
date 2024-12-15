@@ -303,3 +303,39 @@ plot(
     Xnames = c("Environment", "Plant Effects", "Plant Traits", "Family"),
     bg = c("azure2", "azure2", "lightskyblue1", "indianred")
     )
+
+
+# Same with N:P:C complete data
+aus_env <- aus_NPC |> select(
+    SN_total_0_30:AP_total_0_30,
+    MAT:PPT,
+    precipitation_seasonality:temp_seasonality
+    ) |>
+    mutate(across(everything(), log)) |>
+    decostand(method = "standardize") |>
+    tibble()
+aus_traits <- aus_NPC |> select(woodiness:putative_BNF)
+aus_family <- aus_NPC |> select(family)
+aus_planteffects <- aus_NPC |> select(NPP, AET) |>
+    mutate(across(everything(), log)) |>
+    decostand(method = "standardize") |>
+    tibble()
+aus_outcome <- aus_NPC |> select(leaf_N_per_dry_mass:leaf_C_per_dry_mass) |>
+    mutate(across(everything(), log)) |>
+    decostand(method = "standardize") |>
+    tibble()
+
+aus_variance <- varpart(
+    aus_outcome,
+    aus_env,
+    aus_planteffects,
+    aus_traits,
+    aus_family
+)
+
+aus_variance
+plot(
+    aus_variance,
+    Xnames = c("Environment", "Plant Effects", "Plant Traits", "Family"),
+    bg = c("azure2", "azure2", "lightskyblue1", "indianred")
+    )
