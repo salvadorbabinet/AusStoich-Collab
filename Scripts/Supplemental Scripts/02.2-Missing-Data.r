@@ -2,6 +2,7 @@
 # Libraries & functions ----
 library(here)
 library(tidyverse)
+library(patchwork)
 
 
 # Unexpected missing entries ----
@@ -72,7 +73,7 @@ p6 <- ggplot(mapping = aes(x = ln_NP_ratio)) +
   geom_density(data = aus_NPC, fill = "cyan", alpha = 0.5) +
   labs(x = "N:P Ratio", y = "Density")
 
-p6 + p2 + p3 + p4
+p1 + p5 + p3 + p4
 
 
 # Sofia visualizations here

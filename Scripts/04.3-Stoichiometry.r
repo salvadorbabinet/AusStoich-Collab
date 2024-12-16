@@ -3,6 +3,7 @@
 library(httpgd)
 hgd()
 hgd_browse()
+library(broom)
 
 # Scatter plot simple relationship
 scatter_plot <- function(xvar, yvar, data = aus_data) {
@@ -259,9 +260,10 @@ family_nest |> filter(family == "Cyperaceae") |>
 
 
 # Multiple regression ----
-family_nest <- categorical_nest_multi(ln_NP_ratio, log(SN_total_0_30), log(AET), 9, aus_NP)
+family_nest <- categorical_nest_multi(ln_NP_ratio, log(SN_total_0_30), log(SP_total_0_30), 9, aus_NP)
 family_nest |> select(family, n, results, GOF) |>
-    unnest(c(results, GOF))
+    unnest(c(results, GOF)) |>
+    arrange(desc(GOF))
 
 intercept_slope_no_x(family_nest, family, `ln leaf N:P`, `ln SN + ln SP`, 10)
 
