@@ -1,4 +1,9 @@
 # AusStoich Data Import
+
+# This script creates the aus_data object refered to in all subsequent
+# scripts. Run this once before moving forward, and to recreate the
+# data object.
+
 library(here)
 library(tidyverse)
 

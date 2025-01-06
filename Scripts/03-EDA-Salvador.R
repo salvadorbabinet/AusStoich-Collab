@@ -1,14 +1,19 @@
-# AusStoich Exploratory Data Analysis
+# AusStoich Exploratory Data Analysis (Salvador)
+
+# This is my start to a thorough EDA, which involves looking at variation
+# within single variables and covariation between variables. This script
+# was used to identify merge errors & outliers in the final data object.
+
 # Libraries & functions ----
 library(here)
 library(tidyverse)
-theme_set(theme_bw())
 library(corrplot)
 library(patchwork)
-
 library(httpgd)
+
 hgd()
 hgd_browse()
+theme_set(theme_bw())
 
 histogram <- function(data, variable, bins = NULL, ylim = NULL) {
   ggplot(data, aes(x = {{variable}})) + 
@@ -111,6 +116,8 @@ density_plot_by_factor <- function(xvar, factor, xlim = NULL, ylim = NULL, data 
   ggplot(data, aes(x = {{xvar}}, color = {{factor}}, fill = {{factor}})) +
     geom_density(alpha = 0.4, linewidth = 0.7)
 }
+
+
 # Variability ----
 variability_data <- aus_data |> nest_by(species_binom) |>
   mutate(n = nrow(data)) |> 
@@ -149,8 +156,9 @@ p2 <- ggplot(variability_data, aes(x = species_binom, y = leaf_N_per_dry_mass / 
 
 p1 + p2
 
+
 # Variation ----
-# Quick look at continuous distributions via iteration 
+# Quick look at continuous distributions via iteration
 cont_data <- aus_data |> select(where(is.numeric))
 for (i in 4:ncol(cont_data)) {
   print(histogram(cont_data, cont_data[[i]], bins = 50))
@@ -193,6 +201,8 @@ v3_merge_error <- aus_data |> filter(precipitation > 1000)
 all_data |> histogram(MAT, 80) 
 all_data |> histogram(NPP, 20) 
 all_data |> histogram(AET, 50) 
+
+
 # Co-variation ----
 # Pearson Correlation Matrix (could also do Kendall or Spearman coeffs.)
 corr_matrix <- aus_data |> 
@@ -294,24 +304,3 @@ ggplot(
 dot_plot_by_factor(SN_total_0_30, leaf_N_per_dry_mass, myc_type)
 density_plot_by_factor(leaf_N_per_dry_mass, woodiness)
 density_plot_by_factor(SN_total_0_30, woodiness)
-
-ggplot(
-  aus_data,
-  aes(
-    x = SN_total_0_30,
-    y = leaf_N_per_dry_mass,
-    color = woodiness,
-    fill = woodiness
-  )) +
-  geom_violin(alpha = 0.4)
-
-aus_data |> filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) |>
-  ggplot(mapping = aes(
-    x = leaf_P_per_dry_mass,
-    y = leaf_N_per_dry_mass,
-    color = family,
-    fill = family
-  )) +
-  geom_violin(alpha = 0.4)
-
-aus_data |> count(myc_type)
