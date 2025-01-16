@@ -7,6 +7,7 @@ library(ggtree)
 library(broom)
 library(tidyr)
 library(httpgd)
+library(nlme)
 
 hgd()
 hgd_browse()
@@ -45,6 +46,18 @@ row.names(avg_var_ausdata) <- avg_var_ausdata$species_binom
 #Match order between tree tip labels and nutrient data.
 ausdata_match <- avg_var_ausdata[match(phylo_tree$tip.label, row.names(avg_var_ausdata)), ]
 
+#Want comparable estimates for env/climate predictors
+#Z-score them using base R scale()
+
+# List of predictor columns to be z-scored
+predictor_columns <- c("SN_total_0_30", "SP_total_0_30", "SOC_total_0_30",
+                       "CEC_total_0_30", "AP_total_0_30", "NPP", "MAT", "PPT", "AET",
+                       "precipitation_seasonality", "temp_seasonality")
+
+# Z-score the predictor columns
+ausdata_match[predictor_columns] <- scale(ausdata_match[predictor_columns])
+
+
 # 3. Create a comparative data object.
 
 comp_data <- comparative.data(phy = phylo_tree, data = ausdata_match, names.col = "species_binom")
@@ -52,9 +65,10 @@ comp_data <- comparative.data(phy = phylo_tree, data = ausdata_match, names.col 
 
 # 4. Perform PGLS
 
-#Simple linear regression 
-pgls_model <- pgls(avg_leaf_C ~ SOC_total_0_30, data = comp_data, lambda = "ML")
+#Simple phylo linear regression
+pgls_model <- pgls(avg_leaf_N ~ SN_total_0_30, data = comp_data, lambda = "ML")
 summary(pgls_model)
+
 
 #Multiple linear regression
 N_pgls_model <- pgls(log(avg_leaf_N) ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
@@ -98,7 +112,8 @@ extract_pgls <- function(model, model_name) {
     std.error = coefs[, "Std. Error"],
     statistic = coefs[, "t value"],
     p.value = coefs[, "Pr(>|t|)"],
-    model = model_name
+    model = model_name,
+    type = "PGLS"
   )
 }
 
@@ -111,7 +126,7 @@ C_tidy <- extract_pgls(C_pgls_model, "C")
 combined_tidy <- bind_rows(N_tidy, P_tidy, C_tidy)
 #to parse through significant estimates or not
 combined_tidy <- combined_tidy %>%
-  mutate(significant = ifelse(p.value <= 0.1, "Significant", "Not Significant"))
+  mutate(significant = ifelse(p.value <= 0.05, "Significant", "Not Significant"))
 
 
 # Plot all estimates
@@ -131,7 +146,7 @@ combined_tidy <- combined_tidy %>%
   scale_shape_manual(values = c("Significant" = 16, "Not Significant" = 1)) +
   facet_wrap(~ term, scales = "free_y") +
   theme_minimal() +
-  labs(title = "Estimates of PGLS Models for log(N), log(P), and log(C), p < 0.1",
+  labs(title = "Estimates of PGLS Models for log(N), log(P), and log(C), p < 0.05",
        x = "Model",
        y = "Estimate",
        color = "Model",
@@ -139,6 +154,8 @@ combined_tidy <- combined_tidy %>%
   theme(legend.position = "right")
 
 #4 Diagnostic plots
+
+
 
 # - Look at data, assess spread of variation metrics
 #recall that goal was to set SE as variance for the model
@@ -165,3 +182,66 @@ all_pos_sp_plot + geom_facet(
   orientation = "y") +
   ggtitle("") +
   theme(plot.title = element_text(size = 20))
+
+
+# --------------- Now do same model without phylogeny: GLS
+
+#GLS allows for errors that are correlated and not normally distributed
+#following code is essentially the same as an OLS though 
+
+N_gls <- gls(avg_leaf_N ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+                CEC_total_0_30 + AP_total_0_30 + NPP + MAT + PPT + AET +
+                precipitation_seasonality + temp_seasonality, ausdata_match)
+summary(N_gls)
+plot(N_gls)
+
+P_gls <- gls(avg_leaf_P ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+                CEC_total_0_30 + AP_total_0_30 + NPP + MAT + PPT + AET +
+                precipitation_seasonality + temp_seasonality, data = ausdata_match,
+                na.action = na.omit)
+summary(P_reg)
+plot(P_gls)
+
+C_gls <- gls(avg_leaf_C ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+                CEC_total_0_30 + AP_total_0_30 + NPP + MAT + PPT + AET +
+                precipitation_seasonality + temp_seasonality, data = ausdata_match,
+                na.action = na.omit)
+summary(C_reg)
+plot(C_gls)
+
+#tidy() can't get info from gls data
+extract_gls <- function(model, model_name) {
+  summary_model <- summary(model)
+  coefs <- summary_model$tTable
+  data.frame(
+    term = rownames(coefs),
+    estimate = coefs[, "Value"],
+    std.error = coefs[, "Std.Error"],
+    statistic = coefs[, "t-value"],
+    p.value = coefs[, "p-value"],
+    model = model_name,
+    type = "GLS"
+  )
+}
+
+#extract model outputs
+N_tidy_gls <- extract_gls(N_gls, "N")
+P_tidy_gls <- extract_gls(P_gls, "P")
+C_tidy_gls <- extract_gls(C_gls, "C")
+
+combined_gls <- bind_rows(N_tidy_gls, P_tidy_gls, C_tidy_gls)
+
+combined_gls <- combined_gls %>%
+  mutate(significant = ifelse(p.value <= 0.05, "Significant", "Not Significant"))
+
+ggplot(combined_gls, aes(x = model, y = estimate, color = model, shape = significant)) +
+  geom_point(size = 4, position = position_dodge(width = 0.5)) +
+  scale_shape_manual(values = c("Significant" = 16, "Not Significant" = 1)) + 
+  facet_wrap(~ term, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Estimates of GLS Models for log(N), log(P), and log(C), p < 0.05",
+       x = "Model",
+       y = "Estimate",
+       color = "Model",
+       shape = "Significance") +
+  theme(legend.position = "right")
