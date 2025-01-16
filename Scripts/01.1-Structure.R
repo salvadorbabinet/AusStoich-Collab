@@ -111,21 +111,37 @@ species |> #Observation density within a given frequency range
     x = 'Number of observations', y = 'Density'
   )
 
-# Spatial distribution 
+
+# Spatial distribution ----
 # All species
+aus_NPC <- aus_NPC |> rename(Family = family)
+aus_subset <- filter(aus_NPC, Family %in% c("Myrtaceae", "Fabaceae", "Proteaceae"))
 australia <- map_data('world', region = 'australia') |> filter(long < 155)
+
 ggplot() +
   geom_polygon(
     data = australia, 
     aes(x = long, y = lat, group = group), 
     fill = 'white', color = 'black'
-    ) + 
+  ) + 
   coord_quickmap() +
-  geom_jitter( #Bin by species frequency? 
-    data = aus_data, 
+  geom_jitter(
+    data = anti_join(aus_data, aus_subset),
     aes(x = long_deg, y = lat_deg),
-    alpha = 0.2, size = 2
-    ) +
+    alpha = 0.1, size = 1, color = "#bebebec4"
+  ) +
+  geom_jitter(
+    data = filter(aus_NPC, !(Family %in% c("Myrtaceae", "Fabaceae", "Proteaceae"))),
+    aes(x = long_deg, y = lat_deg),
+    alpha = 0.2, size = 2.5,
+    width = 0.4,
+    height = 0.4
+  ) +
+  geom_jitter( 
+    data = aus_subset,
+    aes(x = long_deg, y = lat_deg, color = Family, shape = Family),
+    alpha = 0.7, size = 2.5
+  ) +
   labs(
     title = 'Spatial distribution of observations in AusTraits',
     x = 'Longitude', y = 'Latitude'
