@@ -20,8 +20,8 @@ nested_aus_data <- aus_data |> nest_by(family) |>
 
 nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |> 
   mutate(family = forcats::fct_reorder(family, estimate, .fun = min)) |>
-  ggplot(mapping = aes(x = family, y = estimate, ymin = estimate - std.error, ymax = estimate + std.error)) + 
-  geom_pointrange() + 
+  ggplot(mapping = aes(x = family, y = estimate, ymin = estimate - std.error, ymax = estimate + std.error)) +
+  geom_pointrange() +
   facet_wrap(~term, scales = "free")
 
 nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |> 
@@ -33,7 +33,7 @@ nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |>
 nested_aus_data |> select(-c(data, models)) |> tidyr::unnest(tidymodels) |> 
   select(family, term, estimate) |> 
   tidyr::pivot_wider(names_from = term, values_from = estimate) |>
-  ggplot(mapping = aes(x = `(Intercept)`)) + 
+  ggplot(mapping = aes(x = `(Intercept)`)) +
   geom_histogram()
 
 nested_aus_data$tidymodels[[2]]

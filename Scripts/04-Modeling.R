@@ -106,6 +106,9 @@ simple_reg |> augment() |>
   ggplot(aes(x = log_outcome, y = .resid)) +
   geom_point(alpha = 0.5)
 
+par(mfrow = c(2,2))
+plot(simple_reg)
+
 summary(simple_reg)
 
 
@@ -114,6 +117,8 @@ summary(simple_reg)
 simple_reg_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass)
 simple_reg <- lm(log_outcome ~ SN_total_0_30, simple_reg_data)
 simple_regression_outputs(SN_total_0_30, leaf_N_per_dry_mass)
+par(mfrow = c(1,1))
+plot(simple_reg)
 
 # N ~ SOC (soil carbon)
 simple_reg_data <- prep_simple_data(SOC_total_0_30, leaf_N_per_dry_mass)
@@ -139,6 +144,43 @@ simple_regression_outputs(MAT, leaf_N_per_dry_mass)
 simple_reg_data <- prep_simple_data(precipitation_seasonality, leaf_N_per_dry_mass)
 simple_reg <- lm(log_outcome ~ precipitation_seasonality, simple_reg_data)
 simple_regression_outputs(precipitation_seasonality, leaf_N_per_dry_mass)
+
+
+# Does removing single-sp. observations change things? ----
+multiple_observed_species <- aus_data |> count(species_binom) |> filter(n > 2)
+pruned_data <- aus_data |> filter(species_binom %in% multiple_observed_species$species_binom)
+
+compare_pruning <- function(var1, var2, data1 = aus_data, data2 = pruned_data) {
+  p1 <- ggplot(data1, aes(x = {{var1}})) + geom_histogram() + labs(title = "Full data")
+  p2 <- ggplot(data2, aes(x = {{var1}})) + geom_histogram() + labs(title = "Pruned data")
+  plot(p1 + p2)
+
+  q1 <- ggplot(data1, aes(x = {{var2}})) + geom_histogram() + labs(title = "Full data")
+  q2 <- ggplot(data2, aes(x = {{var2}})) + geom_histogram() + labs(title = "Pruned data")
+  plot(q1 + q2)
+
+  s1 <- ggplot(data1, aes(x = {{var2}}, y = {{var1}})) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = lm, se = FALSE) +
+    labs(title = "Full data")
+  s2 <- ggplot(data2, aes(x = {{var2}}, y = {{var1}})) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = lm, se = FALSE) +
+    labs(title = "Pruned data")
+  s1 + s2
+}
+
+compare_pruning(leaf_N_per_dry_mass, SN_total_0_30)
+
+simple_reg_aus_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass, aus_data)
+simple_reg <- lm(log_outcome ~ SN_total_0_30, simple_reg_aus_data)
+simple_regression_outputs(SN_total_0_30, leaf_N_per_dry_mass, simple_reg_aus_data)
+plot(simple_reg)
+
+simple_reg_pruned_data <- prep_simple_data(SN_total_0_30, leaf_N_per_dry_mass, pruned_data)
+simple_reg <- lm(log_outcome ~ SN_total_0_30, simple_reg_pruned_data)
+simple_regression_outputs(SN_total_0_30, leaf_N_per_dry_mass, simple_reg_pruned_data)
+plot(simple_reg)
 
 
 # PCA ----
@@ -174,7 +216,7 @@ pca_scores |> pivot_wider(names_from = PC, values_from = value) |>
   geom_point(alpha = 0.5)
 
 
-# base R glm
+# base R glm (multiple regression)
 glm_data <- aus_data |>
   mutate(log_leaf_N = log(leaf_N_per_dry_mass)) |>
   filter(log_leaf_N > 0)
@@ -185,6 +227,14 @@ r2 <- aus_glm |> augment() |>
   geom_point(alpha = 0.5)
 r1 + r2
 summary(aus_glm)
+
+# generalized equivalent: type of data not compatible
+# need binary / proportion / count data
+# aus_GLM <- glm(
+#   leaf_N_per_dry_mass ~ SN_total_0_30 + PPT + MAT + precipitation_seasonality,
+#   family = poisson(link = "log"),
+#   data = aus_data
+#)
 
 
 # tidymodels attempt ----
@@ -215,12 +265,12 @@ n3 <- ggplot(aus_test, aes(x = leaf_N_per_dry_mass)) +
   ggtitle('Testing data')
 
 # Check leaf N stratification 
-n1 + n2 + n3 
+n1 + n2 + n3
 rm(n1, n2, n3)
 
 # Initial recipe with PCA pre-requirements 
 aus_rec <- recipe(leaf_N_per_dry_mass ~ ., data = aus_train) |> 
-  update_role(dataset_id:myc_type, new_role = 'factor') |> 
+  update_role(dataset_id:ln_CP_ratio, new_role = 'tag') |> 
   step_zv(all_numeric_predictors()) |> 
   step_orderNorm(all_numeric_predictors()) |> 
   step_normalize(all_numeric_predictors()) |> 
@@ -246,14 +296,14 @@ p1 + p2
 # Add PCA step 
 aus_pca <- aus_rec |> 
   step_pca(all_numeric_predictors(), num_comp = 4) |> 
-  prep() 
+  prep()
 aus_pca
 
 # Variance coverage and loadings 
 pca_extract <- aus_pca$steps[[4]]
 glimpse(pca_extract)
 
-pca_variance <- pca_extract |> tidy(type = 'variance') 
+pca_variance <- pca_extract |> tidy(type = 'variance')
 pca_variance |> 
   filter(terms %in% c('percent variance', 'cumulative percent variance')) |> 
   pivot_wider(names_from = terms, values_from = value) |> 
@@ -283,14 +333,14 @@ ggplot(aes(x = value, y = terms)) +
   geom_col() + 
   facet_wrap(~component) +
   labs(
-    title = 'Loadings plot of top 6 components (93.5% variance explained)',
+    title = 'Loadings plot of top 6 components (95.2% variance explained)',
     x = 'Contribution',
     y = 'Term'
   )
 
 # Then bake and plot components to view scores
-aus_pca_processed <- aus_pca |> bake(where(is.numeric), new_data = aus_test)
-aus_pca_processed
+aus_pca_processed <- aus_pca |> bake(all_predictors(), new_data = aus_test)
+aus_pca_processed # Includes numeric tag variables
 
 # Plot w/o additional visualization 
 aus_pca_processed |> ggplot(aes(x = .panel_x, y = .panel_y)) +
