@@ -76,7 +76,9 @@ length(corrected_sp_mismatch) #51 still
 #conclusion: all_naming_corrections csv best possible version for phylo
 #tree species representation within V.PhyloMaker2
 
-#----------------------------Early Derivation--------------------------------------
+
+
+#----------------------------Early Derivation-----------------------------------
 
 # summer 2024 (old), for recordkeeping
 #goal: make a genus-level phylogeny for all plants in Austraits
@@ -118,7 +120,7 @@ TPL_genus <- tips.info %>%
 sp_in_aus_not_in_tpl_genus <- 
   austraits_leaf_stoich_genus$family_genus[!(austraits_leaf_stoich_genus$family_genus
                                         %in% TPL_genus$family_genus)]
-length(unique(sp_in_aus_not_in_tpl_genus)) #58 
+length(unique(sp_in_aus_not_in_tpl_genus)) #58
 
 
 #try updated package
@@ -266,19 +268,3 @@ lcvp_summary(lcvp_sanity_check) #same ones that are missing, so all good
 
 austraits_unique_corrected <- austraits_corrected %>%
   distinct(species, .keep_all = TRUE) #1415 species, not 1421 (probably due to synonyms)
-
-
-#---------------------austraits_all_pos_sp.tre derivation-----------------------
-austraits_all_pos_sp_df <- read.csv("Inputs/all_pos_austraits_LCVP_sp.csv")
-austraits_all_pos_sp <- phylo.maker(sp.list = austraits_all_pos_sp_df,
-                                           tree = GBOTB.extended.LCVP,
-                                           nodes = nodes.info.1.LCVP,
-                                           scenarios="S3")
-
-write.tree(austraits_all_pos_sp$scenario.3,
-           "Inputs/austraits_all_pos_sp.tre")
-
-austraits_all_pos_sp_tree<- read.tree("Inputs/austraits_all_pos_sp.tre")
-plot(austraits_all_pos_sp_tree, cex= 0.1)
-
-# "all pos sp" = all species that are 100% resolved in LCVP megatree

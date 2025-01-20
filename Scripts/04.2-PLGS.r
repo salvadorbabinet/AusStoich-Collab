@@ -140,7 +140,7 @@ combined_tidy <- combined_tidy %>%
   theme(legend.position = "right")
 
 
-# Plot estimates that
+# Plot estimates by significance
   ggplot(combined_tidy, aes(x = model, y = estimate, color = model, shape = significant)) +
   geom_point(size = 4, position = position_dodge(width = 0.5)) +
   scale_shape_manual(values = c("Significant" = 16, "Not Significant" = 1)) +
@@ -187,7 +187,7 @@ all_pos_sp_plot + geom_facet(
 # --------------- Now do same model without phylogeny: GLS
 
 #GLS allows for errors that are correlated and not normally distributed
-#following code is essentially the same as an OLS though 
+#following code is essentially the same as an OLS though
 
 N_gls <- gls(avg_leaf_N ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
                 CEC_total_0_30 + AP_total_0_30 + NPP + MAT + PPT + AET +

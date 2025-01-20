@@ -9,6 +9,7 @@ library(V.PhyloMaker2)
 library(httpgd)
 library(here)
 library(ggtreeExtra)
+library(arsenal) #comparedf() function useful
 
 aus_data # from 02-Data-Import
 
@@ -45,7 +46,7 @@ hgd_browse()
 #------------------------------Data Entry---------------------------------------
 
 # all pos sp data entry ----
-austraits_all_pos_sp_tree <- read.tree("Inputs/Trees/austraits_all_pos_sp.tre")
+ausdata_all_pos_sp_tree <- read.tree("Inputs/Trees/ausdata_all_pos_sp.tre")
 austraits_all_pos_sp_df <- read_csv('Inputs/all_pos_austraits_LCVP_sp.csv')
 
 all_pos_sp_data <- aus_data[aus_data$species_binom %in%
@@ -59,6 +60,7 @@ aus_all_pos_sp_tree_tib <- as_tibble(austraits_all_pos_sp_tree)
 aus_all_pos_sp_tree_tib <- add_tree_traits(aus_all_pos_sp_tree_tib,
                                                     avg_all_pos_sp_data)
 # end of all pos sp data entry
+
 
 
 # pruned tree data entry ----
@@ -126,21 +128,63 @@ ITS_tree_tib <- add_tree_traits(ITS_tree_tib, avg_ITS_sp_data)
 tree$node.label <- NULL
 #now try labeling by genera (later)
 
+
+#for the following, need phylo object and dataframe associated with it
+
 #horizontal base
-all_pos_sp_plot <- ggtree(austraits_all_pos_sp_tree) + geom_tiplab(size = 0.5)
+all_pos_sp_plot <- ggtree(ausdata_all_pos_sp_tree) + geom_tiplab(size = 0.5)
 
 #most basic, no coloring, horizontal bar plot
 all_pos_sp_plot + geom_facet(
   panel = 'Trait',
   data = avg_all_pos_sp_data,
   geom = geom_col,
-  mapping = aes(x = CV_C),
+  mapping = aes(x = avg_leaf_N),
   orientation = "y") +
   ggtitle("") +
   theme(plot.title = element_text(size = 20))
 
+#try to color continously by trait
+#syntax used: but we dont have trait data to match on phylo object... 
+#must link using treeio, full_join() method
+
+
+#-- Linkage of data to phylo object
+#need info df with column "label" then trait data as columns
+library(readr)
+names(avg_all_pos_sp_data)[1] <- "label"
+
+attemptree <- full_join(as.treedata(ausdata_all_pos_sp_tree), avg_all_pos_sp_data, by = "label")
+#following: tree tib into tree data also works!
+attemptree1 <- full_join(as.treedata(aus_all_pos_sp_tree_tib), avg_all_pos_sp_data, by = "label")
+attemptree #YEAHHHH THIS WORKS !!!!!!!!!!!!!!
+get.data(attemptree) #to extract data from phylo
+  
+ggtree(attemptree, aes(color = avg_leaf_N)) +
+  scale_color_continuous(low = "yellow", high = "magenta") +
+  geom_tiplab(size = 0.5, color = "black")
+
+#only plots existing values
+ggtree(attemptree, aes(color = avg_leaf_N), layout = "circular") +
+  scale_color_continuous(low = "orange", high = "green") + 
+  geom_tiplab(size = 0.5) #can manually set to black if needed
+
+#start from avg = 0 
+ggtree(attemptree, aes(color = avg_leaf_N), layout = 'circular', 
+             ladderize = FALSE, continuous = 'colour', size = 0.5) +
+  scale_color_gradientn(colours=c("black", "orange", 'green', 'blue', 'magenta')) +
+  geom_tiplab(size = 0.5, color = "black")
+
+
+#to label clades 
+#https://yulab-smu.top/treedata-book/chapter5.html#layers-for-tree-annotation
+#need to label internal nodes to use cladelab()
+attemptree #829 tips, 828 internal nodes
+
+
+
 #circular base
-all_pos_sp_circular_plot <- ggtree(austraits_all_pos_sp_tree, layout = "circular",
+all_pos_sp_circular_plot <- ggtree(ausdata_all_pos_sp_tree, layout = "circular",
                                    branch.length = "none")+ ggtitle("All Pos. Sp.")
 
 #most basic, no coloring circular bar plot
