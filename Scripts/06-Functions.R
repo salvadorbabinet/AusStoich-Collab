@@ -129,7 +129,7 @@ prune_ausdata <- function(df, m) {
     ) %>%
     ungroup()
   
-  #access list of species associated with freq less than, not equal to n:
+  #access list of species associated with freq less than, equal to n:
   sp_list <- subset(sp_obs, Freq <= m)$species_list %>%
     unlist() %>% #to properly format dif. rows as one vector
     strsplit(", ") %>%

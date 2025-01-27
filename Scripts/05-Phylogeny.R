@@ -1,3 +1,8 @@
+
+install.packages("devtools")
+library(devtools)
+#to install packages from github
+devtools::install_github("jinyizju/V.PhyloMaker2")
 library(tidyverse)
 library(dplyr)
 library(ape)
@@ -8,7 +13,6 @@ library(phytools)
 library(V.PhyloMaker2)
 library(httpgd)
 library(here)
-library(ggtreeExtra)
 library(arsenal) #comparedf() function useful
 
 aus_data # from 02-Data-Import
@@ -165,14 +169,17 @@ ggtree(attemptree, aes(color = avg_leaf_N)) +
   geom_tiplab(size = 0.5, color = "black")
 
 #only plots existing values
+#use this since one color per branch
 ggtree(attemptree, aes(color = avg_leaf_N), layout = "circular") +
-  scale_color_continuous(low = "orange", high = "green") + 
+  scale_color_continuous(low = "pink", high = "green") + 
   geom_tiplab(size = 0.5) #can manually set to black if needed
 
 #start from avg = 0 
-ggtree(attemptree, aes(color = avg_leaf_N), layout = 'circular', 
+#actually don't use this, it'll manually set weird gradients
+#one branch will be many colors, which is not the objective of representation here
+ggtree(attemptree, aes(color = CV_N), layout = 'circular',
              ladderize = FALSE, continuous = 'colour', size = 0.5) +
-  scale_color_gradientn(colours=c("black", "orange", 'green', 'blue', 'magenta')) +
+  scale_color_gradientn(colours=c("darkgrey", "orange", 'green', 'blue', 'magenta')) +
   geom_tiplab(size = 0.5, color = "black")
 
 
