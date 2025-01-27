@@ -190,9 +190,57 @@ summary(glm(log(leaf_N_per_dry_mass) ~ SN_total_0_30 + PPT,
 #eucalyptus_miniata, eucalyptus_macrorhyncha, acacia_aneura
 #will remove species that have less than or equal to 62 entries
 #to access 7 most common species
+
+#linear regression of top 7 species
+#leaf N by SN
+
+lm <- lm(log(leaf_N_per_dry_mass) ~ SN_total_0_30, data = aus_data)
+plot(lm)  #ok
+
+#all data
+ggplot(aus_data, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass))) +
+  geom_point(alpha = 0.6) +  # Scatter plot of the data points
+  geom_smooth(method = "lm", col = "blue") +  # Add the regression line
+  theme_classic() +
+  labs(title = "log(leaf_N_per_dry_mass) ~ SN_total_0_30",
+       x = "SN_total_0_30",
+       y = "log(leaf_N_per_dry_mass)")
+
 pruned <- prune_ausdata(aus_data, 62)
 
+#save me why does species level curve show no all-encompassing relationship
+ggplot(pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = species_binom)) +
+  geom_point(alpha = 0.6) +
+  #geom_smooth(method = "lm", se = FALSE) +  #just confuses things more
+  theme_minimal() +
+  labs(title = "log(leaf_N_per_dry_mass) ~ SN_total_0_30",
+       x = "SN_total_0_30",
+       y = "log(leaf_N_per_dry_mass)",
+       color = "Species") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+#3 most common genera: eucalyptus, corymbia, acacia, banksia
+#added banksia as proteaceae representative
+genera_pruned <- aus_data %>%
+  filter(genus %in% c("Eucalyptus", "Corymbia", "Acacia", "Banksia"))
+
+  ggplot(genera_pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = genus)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+#3 most common families: myrtaceae, fabaceae, proteaceae
+family_pruned <- aus_data %>%
+  filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae"))
+
+  ggplot(family_pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = family)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 #-----------------------Species Frequency + Spread------------------------------
 species <- as.data.frame(table(aus_data$species_binom))  %>%
@@ -282,7 +330,7 @@ genus <- as.data.frame(table(aus_data$genus)) %>%
 
 #similar to species observations
 #doesn't have an use (yet)
-#82 genera have only one entry 
+#82 genera have only one entry
 genus_obs <- aus_data %>%
       count(genus) %>%
       arrange(desc(n)) %>%
