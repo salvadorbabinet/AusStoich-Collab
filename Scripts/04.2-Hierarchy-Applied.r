@@ -1,5 +1,9 @@
 # Hierarchical-Modeling
-# Libraries and functions
+
+# This is Andrew's code cleaned up and generalized to our data. The
+# script includes nesting to investigate foliar element concentrations
+
+# Libraries and functions ----
 library(tidyverse)
 theme_set(theme_bw())
 library(broom)

@@ -1,4 +1,9 @@
 # AusStoich Modeling
+
+# First half of this script is linear regression / PCA using base R, second
+# half is an attempt at doing these using tidymodels. The functions make
+# simple regression very streamlined, but the PCA needs work.
+
 # Libraries & functions ----
 library(here)
 library(broom)
@@ -183,6 +188,19 @@ simple_regression_outputs(SN_total_0_30, leaf_N_per_dry_mass, simple_reg_pruned_
 plot(simple_reg)
 
 
+# base R glm (multiple regression) ----
+glm_data <- aus_data |>
+  mutate(log_leaf_N = log(leaf_N_per_dry_mass)) |>
+  filter(log_leaf_N > 0)
+aus_glm <- lm(log_leaf_N ~ SN_total_0_30 + PPT + MAT + precipitation_seasonality, glm_data)
+r1 <- aus_glm |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
+r2 <- aus_glm |> augment() |>
+  ggplot(aes(x = log_leaf_N, y = .resid)) +
+  geom_point(alpha = 0.5)
+r1 + r2
+summary(aus_glm)
+
+
 # PCA ----
 # Center / scale only numeric variables, then run PCA
 ggplot(aus_data, aes(x = SN_total_0_30)) + geom_histogram()
@@ -216,30 +234,9 @@ pca_scores |> pivot_wider(names_from = PC, values_from = value) |>
   geom_point(alpha = 0.5)
 
 
-# base R glm (multiple regression)
-glm_data <- aus_data |>
-  mutate(log_leaf_N = log(leaf_N_per_dry_mass)) |>
-  filter(log_leaf_N > 0)
-aus_glm <- lm(log_leaf_N ~ SN_total_0_30 + PPT + MAT + precipitation_seasonality, glm_data)
-r1 <- aus_glm |> augment() |> ggplot(aes(x = .resid)) + geom_histogram()
-r2 <- aus_glm |> augment() |>
-  ggplot(aes(x = log_leaf_N, y = .resid)) +
-  geom_point(alpha = 0.5)
-r1 + r2
-summary(aus_glm)
-
-# generalized equivalent: type of data not compatible
-# need binary / proportion / count data
-# aus_GLM <- glm(
-#   leaf_N_per_dry_mass ~ SN_total_0_30 + PPT + MAT + precipitation_seasonality,
-#   family = poisson(link = "log"),
-#   data = aus_data
-#)
-
-
 # tidymodels attempt ----
 # Starting with leaf N outcome
-# Correlation plot 
+# Correlation plot
 aus_data |> select(!Unique_ID:myc_type) |> 
   select(!leaf_P_per_dry_mass:CP_ratio) |> 
   cor(use = 'pairwise.complete.obs') |> 

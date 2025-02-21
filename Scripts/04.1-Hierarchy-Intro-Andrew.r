@@ -1,4 +1,9 @@
 # Intro hierarchical modeling from meeting with Andrew
+
+# This script has the code Andrew showed us for nesting, etc. Mostly
+# for reference, I apply these methods to our data in more detail
+# later on.
+
 library(tidyverse)
 library(tidymodels)
 library(httpgd)
