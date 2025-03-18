@@ -3,8 +3,6 @@ library(tidyverse)
 library(here)
 
 
-
-
 select_relevant_columns <- function(df) {
   # Function for selecting relevant categorical and nutrient columns from aus_data
   # ln ratios not selected since geometric mean calculated from raw values

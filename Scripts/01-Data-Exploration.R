@@ -80,8 +80,17 @@ ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
   theme_minimal()
 
 #PCA here!!!
-#assess colinearity of predictors using vif()
+#assess colinearity of predictors using vif() once model built
+#for now use cor()
+env <- aus_data %>% select(
+  SN_total_0_30, SP_total_0_30, SOC_total_0_30,
+  CEC_total_0_30, AP_total_0_30,
+  NPP, MAT, PPT, AET,
+  precipitation_seasonality, temp_seasonality)
 
+cor(env)
+library(corrplot)
+corrplot(cor(env))
 
 #--------------------------Leaf Nutrient Concentrations-------------------------
 
@@ -130,7 +139,11 @@ ggplot(combined, aes(x = species_binom, y = leaf_N_per_dry_mass)) +
        y = "Leaf Nitrogen Concentration (per dry mass)") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-#hypervolumes
+
+#box plot by myc type & PFTs
+
+
+#----hypervolumes
 #ex. Soil N P and C
 #ex. Leaf N, P, and C
 # major families different in these quantities
@@ -147,13 +160,14 @@ subsetvol <- aus_data %>%
 #how leaf trait varies with env conditions
 hv_entire <- (hypervolume(scale(subsetvol), name = "Entire Dataset"))
 #Environment space occupied by all observations only
-hv_env <- scale(hypervolume(scale(subsetvol%>%select(all_of(c(env1, env2, env3))), name = "Env")))
+hv_env <- hypervolume(scale(subsetvol%>%select(all_of(c(env1, env2, env3)))), name = "Env")
 #this takes a long time - 5 min?
 
 # Plot the hypervolume for the entire dataset
 plot(hv_entire, show.3d = FALSE)
 plot(hv_entire, show.3d = TRUE) # yay it works!
 plot(hv_env, show.3d = T)
+
 
 #mess around with env
 #remember no NAs, only numerical inputs
@@ -166,19 +180,27 @@ plot(hv_env, show.3d = T)
 #Myrtaceae, Fabaceae, Proteaceae, prep for hypervol
 myr <- scale(na.omit(subset((aus_data), family == "Myrtaceae") %>%
   select(all_of(c(env1, env2, env3, leaf_trait)))))
-myr_cube <- (hypervolume(scale(myr), name = "Myrtaceae"))
+myr_cube <- (hypervolume((myr), name = "Myrtaceae"))
 
-fab <- na.omit(subset((aus_data), family == "Fabaceae") %>%
-  select(all_of(c(env1, env2, env3, leaf_trait))))
-fab_cube <- (hypervolume(scale(fab), name = "Fabaceae"))
+fab <- scale(na.omit(subset((aus_data), family == "Fabaceae") %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))))
+fab_cube <- (hypervolume((fab), name = "Fabaceae"))
 
-pro <- na.omit(subset((aus_data), family == "Proteaceae") %>%
-  select(all_of(c(env1, env2, env3, leaf_trait))))
-pro_cube <- (hypervolume(scale(pro), name = "Proteaceae"))
+pro <- scale(na.omit(subset((aus_data), family == "Proteaceae") %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))))
+pro_cube <- (hypervolume((pro), name = "Proteaceae"))
 
 fam_cube <- hypervolume_join(myr_cube, fab_cube, pro_cube)
 plot(fam_cube, show.3d = T, colors = c("green", "red", "blue"), point.alpha.min = 0.9)
 plot(fam_cube, show.3d = F, colors = c("green", "red", "blue"))
+
+
+#try cubes of most common sp
+#corymbia_calophylla, eucalyptus_tereticornis, eucalyptus_tetrodonta, corymbia_terminalis
+#eucalyptus_miniata, eucalyptus_macrorhyncha, acacia_aneura
+cor <- scale(na.omit(subset((aus_data), species_binom == "corymbia_calophylla") %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))))
+cor_cube <- (hypervolume((cor), name = "Corymbia Calophylla"))
 
 #--------------------------Trait Env Relationships-------------------------
 
@@ -198,25 +220,25 @@ lm <- lm(log(leaf_N_per_dry_mass) ~ SN_total_0_30, data = aus_data)
 plot(lm)  #ok
 
 #all data
-ggplot(aus_data, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass))) +
+ggplot(aus_data, aes(x = AP_total_0_30, y = (leaf_P_per_dry_mass))) +
   geom_point(alpha = 0.6) +  # Scatter plot of the data points
   geom_smooth(method = "lm", col = "blue") +  # Add the regression line
   theme_classic() +
-  labs(title = "log(leaf_N_per_dry_mass) ~ SN_total_0_30",
-       x = "SN_total_0_30",
-       y = "log(leaf_N_per_dry_mass)")
+  labs(title = "log(leaf_N_per_dry_mass) ~ AP_total_0_30",
+       x = "AP_total_0_30",
+       y = "(leaf_P_per_dry_mass)")
 
 pruned <- prune_ausdata(aus_data, 62)
 
 #save me why does species level curve show no all-encompassing relationship
-ggplot(pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = species_binom)) +
+ggplot(pruned, aes(x = AP_total_0_30, y = (leaf_P_per_dry_mass), color = species_binom)) +
   geom_point(alpha = 0.6) +
   #geom_smooth(method = "lm", se = FALSE) +  #just confuses things more
   theme_minimal() +
-  labs(title = "log(leaf_N_per_dry_mass) ~ SN_total_0_30",
-       x = "SN_total_0_30",
-       y = "log(leaf_N_per_dry_mass)",
-       color = "Species") +
+ #labs(title = "log(leaf_N_per_dry_mass) ~ SN_total_0_30",
+      # x = "SN_total_0_30",
+      # y = "log(leaf_N_per_dry_mass)",
+      # color = "Species") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
@@ -225,7 +247,7 @@ ggplot(pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = spec
 genera_pruned <- aus_data %>%
   filter(genus %in% c("Eucalyptus", "Corymbia", "Acacia", "Banksia"))
 
-  ggplot(genera_pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = genus)) +
+  ggplot(genera_pruned, aes(x = AP_total_0_30, y = log(leaf_P_per_dry_mass), color = genus)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE) +
   theme_minimal() +
@@ -370,6 +392,21 @@ ggplot(data = family, mapping = aes(x = reorder(family, -Freq),
   labs(x = "Family") +
   coord_flip() +
   theme_minimal()
+
+family_sp <- aus_data %>%
+  group_by(family) %>%
+  summarise(species = paste(unique(species_binom), collapse = ", ")) %>%
+  arrange(family)
+
+family_sp <- aus_data %>%
+  filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) %>%
+  select(family, species_binom) %>%
+  distinct() %>%
+  mutate(family = factor(family, levels = c("Myrtaceae", "Fabaceae", "Proteaceae"))) %>%
+  arrange(family)
+
+View(family_sp)
+
 
 #--------------------------------Species Identity-------------------------------
 

@@ -19,7 +19,8 @@ hgd_browse()
 
 #1. Read in tree + remove internal node labels.
 
-phylo_tree <- read.tree(here("Inputs/Trees/ausdata.tre"))
+phylo_tree <- read.tree(here("Inputs/Trees/ausdata_all_pos_sp.tre"))
+
 
 # To inspect internal nodes:
 View(as.data.frame(phylo_tree$node.label))
@@ -189,20 +190,20 @@ all_pos_sp_plot + geom_facet(
 #GLS allows for errors that are correlated and not normally distributed
 #following code is essentially the same as an OLS though
 
-N_gls <- gls(avg_leaf_N ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+N_gls <- gls(log(avg_leaf_N) ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
                 CEC_total_0_30 + AP_total_0_30 + NPP + MAT + PPT + AET +
                 precipitation_seasonality + temp_seasonality, ausdata_match)
 summary(N_gls)
 plot(N_gls)
 
-P_gls <- gls(avg_leaf_P ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+P_gls <- gls(log(avg_leaf_P) ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
                 CEC_total_0_30 + AP_total_0_30 + NPP + MAT + PPT + AET +
                 precipitation_seasonality + temp_seasonality, data = ausdata_match,
                 na.action = na.omit)
 summary(P_reg)
 plot(P_gls)
 
-C_gls <- gls(avg_leaf_C ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+C_gls <- gls(log(avg_leaf_C) ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
                 CEC_total_0_30 + AP_total_0_30 + NPP + MAT + PPT + AET +
                 precipitation_seasonality + temp_seasonality, data = ausdata_match,
                 na.action = na.omit)
@@ -245,3 +246,20 @@ ggplot(combined_gls, aes(x = model, y = estimate, color = model, shape = signifi
        color = "Model",
        shape = "Significance") +
   theme(legend.position = "right")
+
+
+#check AIC of models
+AIC_gls <- AIC(N_gls)
+AIC_pgls <- AIC(N_pgls_model)
+
+
+AIC_gls #N: 861
+AIC_pgls #57.7
+
+N_pgls_model$lambda
+
+
+
+
+
+
