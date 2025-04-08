@@ -4,15 +4,87 @@ devtools::install_github("jinyizju/V.PhyloMaker")
 library(ape)
 library(V.PhyloMaker2)
 library(dplyr)
+library(lcvplants)
 
-setwd("/Users/sofiaquijada/Documents/McGill/2024 Soper Lab/AusStoich")
 
+## 2025 edits - will re-derive all possible species in LCVP more streamlined
+
+aus_data <- aus_data #from 02
+
+#species in aus_data not in tree:
+sp_mismatch <- unique(setdiff(aus_data$species_binom, tips.info.LCVP$species))
+length(sp_mismatch) #585, as opposed to 613 first
+
+
+#search species using LCVP naming standardization package
+lcvp_search <- lcvp_search(sp_mismatch)
+lcvp_summary(lcvp_search)
+#names 100% matched
+#these are species that exist in LCVP, but aren't in tree
+
+
+#fuzzy search for when there are many names 
+fuzzy_search <- lcvp_fuzzy_search(sp_mismatch, progress_bar = TRUE)
+lcvp_summary(fuzzy_search) #outputs 0
+
+
+#genus level
+aus_data <- aus_data %>% mutate(
+    family_genus = paste(aus_data$family, aus_data$genus,sep=" "))
+
+
+LCVP_genus <- tips.info.LCVP %>% mutate(
+    family_genus = paste(tips.info.LCVP$family, tips.info.LCVP$genus,sep=" "))
+
+
+#these are Family-Genus combos in aus_data not in tree
+genus_mismatch <- unique(setdiff(aus_data$family_genus, LCVP_genus$family_genus))
+#36
+#this step was necessary since lcvp_search did not Clearly identify such cases
+
+
+#procedure from summer:
+#df of species without lcvp_search species merged with corrected lcvp species
+#name correction done in excel 2024, genus level
+
+
+#species in aus_data AND tree
+resolved_sp <- aus_data %>%
+  select(species = species_binom, genus, family) %>%
+  distinct(species, .keep_all = TRUE) %>%
+  anti_join(as.data.frame(sp_mismatch), by = c("species" = "sp_mismatch"))
+
+
+#try automated name correction:
+#from lcvp_search output, columns "Search" & "Output.Taxon"
+library(stringr)
+
+species_correction <- lcvp_search %>%
+  select(species_before = Search, Output.Taxon) %>%
+  mutate(species_after = word(Output.Taxon, 1, 2)) %>%
+  mutate(species_after = str_replace_all(species_after, " ", "_")) %>%
+  filter(species_before != species_after) %>%
+  select(species_before, species_after)
+#length 51, doesn't fix input genus or family
+
+#check if these once corrected are in tree
+corrected_sp_mismatch <- unique(setdiff(species_correction$species_before, tips.info.LCVP$species))
+length(corrected_sp_mismatch) #51 still
+#doesn't matter if they're in naming corrections csv anyway
+#haven't implemented in naming corrections csv for this reason
+
+#conclusion: all_naming_corrections csv best possible version for phylo
+#tree species representation within V.PhyloMaker2
+
+
+
+#----------------------------Early Derivation-----------------------------------
+
+# summer 2024 (old), for recordkeeping
 #goal: make a genus-level phylogeny for all plants in Austraits
 
 #using separate csv file since V.Phylomaker has _ in their species names
-austraits_leaf_stoich <-
-  read.csv("Inputs/austraits_leaf_stoichiometry_MASTER_for_phylogeny.csv")
-
+austraits_leaf_stoich <- read.csv("Inputs/austraits_leaf_stoichiometry_MASTER_for_phylogeny.csv")
 
 #----------------------------V.PhyloMaker---------------------------------------
 #species in austraits all in GBOTB?
@@ -48,7 +120,7 @@ TPL_genus <- tips.info %>%
 sp_in_aus_not_in_tpl_genus <- 
   austraits_leaf_stoich_genus$family_genus[!(austraits_leaf_stoich_genus$family_genus
                                         %in% TPL_genus$family_genus)]
-length(unique(sp_in_aus_not_in_tpl_genus)) #58 
+length(unique(sp_in_aus_not_in_tpl_genus)) #58
 
 
 #try updated package
@@ -192,23 +264,7 @@ length(unique(sp_in_cor_aus_not_in_LCVP)) #587, same number as failed lcvp_searc
 sp_in_cor_aus_not_in_LCVP_no_ich <- sp_in_cor_aus_not_in_LCVP [!sp_in_cor_aus_not_in_LCVP
                                                             %in% c("Ichnocarpus")]
 lcvp_sanity_check <- lcvp_search(sp_in_cor_aus_not_in_LCVP_no_ich)
-lcvp_summary(lcvp_sanity_check) #same ones that are missing, so all good 
+lcvp_summary(lcvp_sanity_check) #same ones that are missing, so all good
 
 austraits_unique_corrected <- austraits_corrected %>%
   distinct(species, .keep_all = TRUE) #1415 species, not 1421 (probably due to synonyms)
-
-
-#---------------------austraits_all_pos_sp.tre derivation-----------------------
-austraits_all_pos_sp_df <- read.csv("Inputs/all_pos_austraits_LCVP_sp.csv")
-austraits_all_pos_sp <- phylo.maker(sp.list = austraits_all_pos_sp_df,
-                                           tree = GBOTB.extended.LCVP,
-                                           nodes = nodes.info.1.LCVP,
-                                           scenarios="S3")
-
-write.tree(austraits_all_pos_sp$scenario.3,
-           "Inputs/austraits_all_pos_sp.tre")
-
-austraits_all_pos_sp_tree<- read.tree("Inputs/austraits_all_pos_sp.tre")
-plot(austraits_all_pos_sp_tree, cex= 0.1)
-
-# "all pos sp" = all species that are 100% resolved in LCVP megatree

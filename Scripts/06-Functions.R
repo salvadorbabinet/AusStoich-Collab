@@ -1,8 +1,5 @@
-library(dplyr)
 library(tidyverse)
 library(here)
-
-
 
 
 select_relevant_columns <- function(df) {
@@ -17,11 +14,11 @@ select_relevant_columns <- function(df) {
 }
 
 
-add_CV_columns <- function(df) { # nolint: object_name_linter.
+add_CV_columns <- function(df) {
   #Adds coefficient of variation column to aus_data
-  #CV = NA can mean only one entry per that species
+  #CV = NA means only one entry per that species
   #CV = 0 means no variation for that species
-  CV_added_df <- df %>% # nolint: object_name_linter.
+  CV_added_df <- df %>%
     group_by(species_binom) %>%
     mutate(CV_N = sd(leaf_N_per_dry_mass, na.rm = TRUE) / mean(leaf_N_per_dry_mass,
                                                                na.rm = TRUE),
@@ -96,9 +93,9 @@ extract_trait_values <- function(tree_tib, label_col, trait_col, cut) {
   # trait_col: name of the column that has trait value of interest
   # cut: number of rows to keep from tree_tib
   
-  # Cut the tibble to the specified number of rows
+  # cut the tibble to the specified number of rows
  cut_tree_tib <- tree_tib %>%
-    slice(1:cut)  #to ensure vector only includes nutrient values, not extra node info
+    slice(1:cut)  #to ensure vector only includes nutrient values, not internal node info
   
   labels <- cut_tree_tib[[label_col]]
   traits <- cut_tree_tib[[trait_col]]
@@ -129,7 +126,7 @@ prune_ausdata <- function(df, m) {
     ) %>%
     ungroup()
   
-  #access list of species associated with freq less than, not equal to n:
+  #access list of species associated with freq less than, equal to n:
   sp_list <- subset(sp_obs, Freq <= m)$species_list %>%
     unlist() %>% #to properly format dif. rows as one vector
     strsplit(", ") %>%

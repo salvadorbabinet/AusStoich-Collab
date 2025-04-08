@@ -5,8 +5,10 @@ library(ggplot2)
 library(httpgd)
 library(languageserver)
 library(lintr)
+library(hypervolume)
+library(rgl)
 
-httpgd::hgd() #plot viewer
+httpgd::hgd() #VS code plot viewer
 hgd_browse()
 
 aus_data
@@ -77,25 +79,199 @@ ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
   geom_histogram(fill = "salmon") +
   theme_minimal()
 
+#PCA here!!!
+#assess colinearity of predictors using vif() once model built
+#for now use cor()
+library(dplyr)
+as.data.frame(aus_data)
+a <- as.data.frame(aus_data)
+env <- a %>% dplyr::select(SN_total_0_30, SP_total_0_30, SOC_total_0_30,
+  CEC_total_0_30, AP_total_0_30,
+  NPP, MAT, PPT, AET,
+  precipitation_seasonality, temp_seasonality)
+
+diag(solve(cor(env))) #look at highest ones
+X <- cbind(rnorm(100), 1:100, 1:100+rnorm(100)); diag(solve(cor(X)))
+#first low value, other ones will have high
+#all vifs = 1 in perfect world (perfect indep variables)
+
+cor(env)
+library(corrplot)
+corrplot(cor(env))
+
 #--------------------------Leaf Nutrient Concentrations-------------------------
 
 ggplot(data = aus_data) +
   geom_histogram(mapping = aes(x = leaf_P_per_dry_mass)) +
   theme_minimal()
 
-ggplot(data = avg_aus_data) +
+#using average nutrient df from phylogeny script, of all species
+ggplot(data = avg_ausdata) +
   geom_histogram(mapping = aes(x = CV_P)) +
   theme_minimal()
 
-ggplot(data = aus_data) +
-  geom_histogram(mapping = aes(x = NP_ratio), fill = "lightgreen") +
-  theme_minimal()
+#dot plots of nutrient by species, most abundant
+#corymbia_calophylla, eucalyptus_tereticornis, eucalyptus_tetrodonta, corymbia_terminalis
+#eucalyptus_miniata, eucalyptus_macrorhyncha, acacia_aneura
+#will remove species that have less than or equal to 62 entries
+#to access 7 most common species
+#View(as.data.frame(table(aus_data$species_binom)))
+pruned <- prune_ausdata(aus_data, 62)
+
+#doing it by dplyr better than pruning then plotting
+ggplot(data = aus_data %>%
+         group_by(species_binom) %>%
+         filter(n() > 62) %>%
+         ungroup(),
+       aes(x = species_binom, y = leaf_N_per_dry_mass)) +
+  geom_jitter(width = 0.2, height = 0, size = 2, alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Leaf Nitrogen Concentrations for Most Common Species") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#want to add column of entire variability of nutrient
+pruned <- prune_ausdata(aus_data, 62)
+
+complete <- aus_data %>% mutate(species_binom = "All Species")
+combined <- bind_rows(pruned, complete)
+combined$species_binom <- factor(combined$species_binom, 
+      levels = c(unique(pruned$species_binom), "All Species"))
+
+#success! can automate later... 
+ggplot(combined, aes(x = species_binom, y = leaf_N_per_dry_mass)) +
+  geom_jitter(width = 0.2, height = 0, size = 1, alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Leaf Nitrogen Concentrations",
+       x = "Species",
+       y = "Leaf Nitrogen Concentration (per dry mass)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+#box plot by myc type & PFTs
+
+
+#----hypervolumes
+#ex. Soil N P and C
+#ex. Leaf N, P, and C
+# major families different in these quantities
+
+env1 <- "SN_total_0_30"
+env2 <- "MAT"
+env3 <- "PPT"
+leaf_trait <- "leaf_N_per_dry_mass"
+
+#subset data to only 3 env predictors + leaf trait
+subsetvol <- aus_data %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))
+
+#how leaf trait varies with env conditions
+hv_entire <- (hypervolume(scale(subsetvol), name = "Entire Dataset"))
+#Environment space occupied by all observations only
+hv_env <- hypervolume(scale(subsetvol%>%select(all_of(c(env1, env2, env3)))), name = "Env")
+#this takes a long time - 5 min?
+
+# Plot the hypervolume for the entire dataset
+plot(hv_entire, show.3d = FALSE)
+plot(hv_entire, show.3d = TRUE) # yay it works!
+plot(hv_env, show.3d = T)
+
+
+#mess around with env
+#remember no NAs, only numerical inputs
+#to have seperate colors per family, need one cube object unique to that family
+#remember to scale cube! 
+#then merge cube objects using hypervolume_join()
+#then plot that merged object
+
+
+#Myrtaceae, Fabaceae, Proteaceae, prep for hypervol
+myr <- scale(na.omit(subset((aus_data), family == "Myrtaceae") %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))))
+myr_cube <- (hypervolume((myr), name = "Myrtaceae"))
+
+fab <- scale(na.omit(subset((aus_data), family == "Fabaceae") %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))))
+fab_cube <- (hypervolume((fab), name = "Fabaceae"))
+
+pro <- scale(na.omit(subset((aus_data), family == "Proteaceae") %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))))
+pro_cube <- (hypervolume((pro), name = "Proteaceae"))
+
+fam_cube <- hypervolume_join(myr_cube, fab_cube, pro_cube)
+plot(fam_cube, show.3d = T, colors = c("green", "red", "blue"), point.alpha.min = 0.9)
+plot(fam_cube, show.3d = F, colors = c("green", "red", "blue"))
+
+
+#try cubes of most common sp
+#corymbia_calophylla, eucalyptus_tereticornis, eucalyptus_tetrodonta, corymbia_terminalis
+#eucalyptus_miniata, eucalyptus_macrorhyncha, acacia_aneura
+cor <- scale(na.omit(subset((aus_data), species_binom == "corymbia_calophylla") %>%
+  select(all_of(c(env1, env2, env3, leaf_trait)))))
+cor_cube <- (hypervolume((cor), name = "Corymbia Calophylla"))
+
+#--------------------------Trait Env Relationships-------------------------
 
 summary(glm(log(leaf_N_per_dry_mass) ~ SN_total_0_30 + PPT,
-        data = aus_data, family = "gaussian"))
+            data = aus_data, family = "gaussian"))
 
- 
-#--------------------------------Species Frequency------------------------------
+#linear regressions by species
+#corymbia_calophylla, eucalyptus_tereticornis, eucalyptus_tetrodonta, corymbia_terminalis
+#eucalyptus_miniata, eucalyptus_macrorhyncha, acacia_aneura
+#will remove species that have less than or equal to 62 entries
+#to access 7 most common species
+
+#linear regression of top 7 species
+#leaf N by SN
+
+lm <- lm(log(leaf_N_per_dry_mass) ~ SN_total_0_30, data = aus_data)
+plot(lm)  #ok
+
+#all data
+ggplot(aus_data, aes(x = AP_total_0_30, y = (leaf_P_per_dry_mass))) +
+  geom_point(alpha = 0.6) +  # Scatter plot of the data points
+  geom_smooth(method = "lm", col = "blue") +  # Add the regression line
+  theme_classic() +
+  labs(title = "log(leaf_N_per_dry_mass) ~ AP_total_0_30",
+       x = "AP_total_0_30",
+       y = "(leaf_P_per_dry_mass)")
+
+pruned <- prune_ausdata(aus_data, 62)
+
+#save me why does species level curve show no all-encompassing relationship
+ggplot(pruned, aes(x = AP_total_0_30, y = (leaf_P_per_dry_mass), color = species_binom)) +
+  geom_point(alpha = 0.6) +
+  #geom_smooth(method = "lm", se = FALSE) +  #just confuses things more
+  theme_minimal() +
+ #labs(title = "log(leaf_N_per_dry_mass) ~ SN_total_0_30",
+      # x = "SN_total_0_30",
+      # y = "log(leaf_N_per_dry_mass)",
+      # color = "Species") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+#3 most common genera: eucalyptus, corymbia, acacia, banksia
+#added banksia as proteaceae representative
+genera_pruned <- aus_data %>%
+  filter(genus %in% c("Eucalyptus", "Corymbia", "Acacia", "Banksia"))
+
+  ggplot(genera_pruned, aes(x = AP_total_0_30, y = log(leaf_P_per_dry_mass), color = genus)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+#3 most common families: myrtaceae, fabaceae, proteaceae
+family_pruned <- aus_data %>%
+  filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae"))
+
+  ggplot(family_pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = family)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#-----------------------Species Frequency + Spread------------------------------
 species <- as.data.frame(table(aus_data$species_binom))  %>%
   arrange(desc(Freq)) %>%
   rename(species_binom = Var1)
@@ -183,7 +359,7 @@ genus <- as.data.frame(table(aus_data$genus)) %>%
 
 #similar to species observations
 #doesn't have an use (yet)
-#82 genera have only one entry 
+#82 genera have only one entry
 genus_obs <- aus_data %>%
       count(genus) %>%
       arrange(desc(n)) %>%
@@ -223,6 +399,21 @@ ggplot(data = family, mapping = aes(x = reorder(family, -Freq),
   labs(x = "Family") +
   coord_flip() +
   theme_minimal()
+
+family_sp <- aus_data %>%
+  group_by(family) %>%
+  summarise(species = paste(unique(species_binom), collapse = ", ")) %>%
+  arrange(family)
+
+family_sp <- aus_data %>%
+  filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae")) %>%
+  select(family, species_binom) %>%
+  distinct() %>%
+  mutate(family = factor(family, levels = c("Myrtaceae", "Fabaceae", "Proteaceae"))) %>%
+  arrange(family)
+
+View(family_sp)
+
 
 #--------------------------------Species Identity-------------------------------
 
