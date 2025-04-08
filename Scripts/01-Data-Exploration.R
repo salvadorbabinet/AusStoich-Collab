@@ -82,11 +82,18 @@ ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
 #PCA here!!!
 #assess colinearity of predictors using vif() once model built
 #for now use cor()
-env <- aus_data %>% select(
-  SN_total_0_30, SP_total_0_30, SOC_total_0_30,
+library(dplyr)
+as.data.frame(aus_data)
+a <- as.data.frame(aus_data)
+env <- a %>% dplyr::select(SN_total_0_30, SP_total_0_30, SOC_total_0_30,
   CEC_total_0_30, AP_total_0_30,
   NPP, MAT, PPT, AET,
   precipitation_seasonality, temp_seasonality)
+
+diag(solve(cor(env))) #look at highest ones
+X <- cbind(rnorm(100), 1:100, 1:100+rnorm(100)); diag(solve(cor(X)))
+#first low value, other ones will have high
+#all vifs = 1 in perfect world (perfect indep variables)
 
 cor(env)
 library(corrplot)

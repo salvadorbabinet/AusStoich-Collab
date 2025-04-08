@@ -257,9 +257,3 @@ AIC_gls #N: 861
 AIC_pgls #57.7
 
 N_pgls_model$lambda
-
-
-
-
-
-
