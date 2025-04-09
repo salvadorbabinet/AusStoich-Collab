@@ -9,6 +9,9 @@ library(corrplot)
 
 #Borcard & Legendre method
 
+#check data completeness
+#how many rows for complete NP, CN, CP?
+
 # 1.Ordinary linear regression y ~ explanatory variables
 #a) variable selection procedure: ordistep() from vegan
 #                                 forward.sel() from adespatial
@@ -107,6 +110,15 @@ NP_rda <- rda(Y_NP, X_NP) #A + B
 summary(NP_rda)
 RsquareAdj(NP_rda)$adj.r.squared #0.15
 
+paste("y ~", paste(predictors, collapse = " + "))
+
+#should be the same R2
+check <- lm(as.formula(paste("ln_NP_ratio ~", paste(names(X_NP), collapse = " + ")))
+                       ,data = data) 
+summary(check)#0.15, all good
+
+#must have same number of rows
+NP_phylo_rda <- rda(Y_NP, ausdata_PCs)   
 
 #CN ratio ---------------------------------------------
 complete_lnCN <- lm(ln_CN_ratio ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
@@ -192,9 +204,12 @@ RsquareAdj(CP_rda)$adj.r.squared #0.40 is high
 
 
 #----------------------------
+ausdata_tree <- read.tree(here("Inputs/Trees/ausdata.tre"))
+d <- as.dist(cophenetic(ausdata_tree))
+ausdata_PCs <- ape::pcoa(d)$vectors
 
 #Code from amine for Y~ phylo PCs 
-cophenetic(rcoal(20))
+cophenetic(rcoal(20)) #rcoal generates random trees
 tr <- rcoal(20)
 D <- as.dist(cophenetic(tr)) #d as pairwise distances
 
@@ -204,6 +219,9 @@ pcoa(D) #PCs of distance matrix
 pcoa(D)$vectors
 plot(pcoa(D)$vectors[,1])
 plot(tr)
+
+                                                                                                                  "Nephrolepis_cordifolia", "Pteris_cretica", "Pteris_vittata", 
+                                                                                                                         "Azolla_filiculoides")))
 
 library(ape)
 #
