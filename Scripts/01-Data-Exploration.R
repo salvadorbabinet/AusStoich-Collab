@@ -41,6 +41,13 @@ ggplot() +
   theme_minimal() +
   labs(title = "Row Observations")
 
+#look at categorical variables
+#woodiness, life history, fixation, myc_type
+ggplot() +
+  australia_map +
+  geom_point(data = aus_data, aes(x = long_deg, y = lat_deg,
+                                  color = putative_BNF)) +
+  theme_minimal()
 
 #env variables on map
 ggplot() + australia_map +
@@ -79,10 +86,7 @@ ggplot(data = aus_data, mapping = aes(x = temp_seasonality)) +
   geom_histogram(fill = "salmon") +
   theme_minimal()
 
-#PCA here!!!
-#assess colinearity of predictors using vif() once model built
-#for now use cor()
-library(dplyr)
+
 as.data.frame(aus_data)
 a <- as.data.frame(aus_data)
 env <- a %>% dplyr::select(SN_total_0_30, SP_total_0_30, SOC_total_0_30,
@@ -102,7 +106,7 @@ corrplot(cor(env))
 #--------------------------Leaf Nutrient Concentrations-------------------------
 
 ggplot(data = aus_data) +
-  geom_histogram(mapping = aes(x = leaf_P_per_dry_mass)) +
+  geom_histogram(mapping = aes(x = log(CP_ratio))) +
   theme_minimal()
 
 #using average nutrient df from phylogeny script, of all species
@@ -148,66 +152,33 @@ ggplot(combined, aes(x = species_binom, y = leaf_N_per_dry_mass)) +
 
 
 #box plot by myc type & PFTs
+#in poster visualizations
 
+#ratios by major family
 
-#----hypervolumes
-#ex. Soil N P and C
-#ex. Leaf N, P, and C
-# major families different in these quantities
+#geometric average per family
+#recall arithmetic mean of logged values = geometric mean
+aus_data %>%
+  group_by(family) %>%
+  filter(n() > 99) %>%
+  summarise(mean_CN = mean(ln_CN_ratio, na.rm = TRUE)) %>%
+  ggplot(aes(x = family, y = mean_CN)) +
+  geom_col() +
+  theme_minimal()
 
-env1 <- "SN_total_0_30"
-env2 <- "MAT"
-env3 <- "PPT"
-leaf_trait <- "leaf_N_per_dry_mass"
+#jitter plot
+aus_data %>%
+  group_by(family) %>%
+  filter(n() > 99) %>%
+  ungroup() %>%
+  ggplot(aes(x = family, y = CN_ratio)) +
+  geom_jitter(width = 0.2, alpha = 0.4) +
+  stat_summary(fun = mean, geom = "crossbar", width = 0.4, fatten = 0, color = "black") +
+  theme_minimal() +
+  labs(title = "C:N Ratios per Family (n > 99)",
+       x = "Family", y = "C:N Ratio") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-#subset data to only 3 env predictors + leaf trait
-subsetvol <- aus_data %>%
-  select(all_of(c(env1, env2, env3, leaf_trait)))
-
-#how leaf trait varies with env conditions
-hv_entire <- (hypervolume(scale(subsetvol), name = "Entire Dataset"))
-#Environment space occupied by all observations only
-hv_env <- hypervolume(scale(subsetvol%>%select(all_of(c(env1, env2, env3)))), name = "Env")
-#this takes a long time - 5 min?
-
-# Plot the hypervolume for the entire dataset
-plot(hv_entire, show.3d = FALSE)
-plot(hv_entire, show.3d = TRUE) # yay it works!
-plot(hv_env, show.3d = T)
-
-
-#mess around with env
-#remember no NAs, only numerical inputs
-#to have seperate colors per family, need one cube object unique to that family
-#remember to scale cube! 
-#then merge cube objects using hypervolume_join()
-#then plot that merged object
-
-
-#Myrtaceae, Fabaceae, Proteaceae, prep for hypervol
-myr <- scale(na.omit(subset((aus_data), family == "Myrtaceae") %>%
-  select(all_of(c(env1, env2, env3, leaf_trait)))))
-myr_cube <- (hypervolume((myr), name = "Myrtaceae"))
-
-fab <- scale(na.omit(subset((aus_data), family == "Fabaceae") %>%
-  select(all_of(c(env1, env2, env3, leaf_trait)))))
-fab_cube <- (hypervolume((fab), name = "Fabaceae"))
-
-pro <- scale(na.omit(subset((aus_data), family == "Proteaceae") %>%
-  select(all_of(c(env1, env2, env3, leaf_trait)))))
-pro_cube <- (hypervolume((pro), name = "Proteaceae"))
-
-fam_cube <- hypervolume_join(myr_cube, fab_cube, pro_cube)
-plot(fam_cube, show.3d = T, colors = c("green", "red", "blue"), point.alpha.min = 0.9)
-plot(fam_cube, show.3d = F, colors = c("green", "red", "blue"))
-
-
-#try cubes of most common sp
-#corymbia_calophylla, eucalyptus_tereticornis, eucalyptus_tetrodonta, corymbia_terminalis
-#eucalyptus_miniata, eucalyptus_macrorhyncha, acacia_aneura
-cor <- scale(na.omit(subset((aus_data), species_binom == "corymbia_calophylla") %>%
-  select(all_of(c(env1, env2, env3, leaf_trait)))))
-cor_cube <- (hypervolume((cor), name = "Corymbia Calophylla"))
 
 #--------------------------Trait Env Relationships-------------------------
 

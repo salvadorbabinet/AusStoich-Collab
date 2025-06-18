@@ -6,11 +6,16 @@ library(car)
 library(adespatial)
 library(usdm)
 library(corrplot)
+library(dplyr)
 
 #Borcard & Legendre method
 
 #check data completeness
 #how many rows for complete NP, CN, CP?
+
+complete_data <- aus_data %>% 
+  drop_na() #1298 rows
+#there can be NAs in CP, but not in NP
 
 # 1.Ordinary linear regression y ~ explanatory variables
 #a) variable selection procedure: ordistep() from vegan
@@ -117,8 +122,14 @@ check <- lm(as.formula(paste("ln_NP_ratio ~", paste(names(X_NP), collapse = " + 
                        ,data = data) 
 summary(check)#0.15, all good
 
-#must have same number of rows
-NP_phylo_rda <- rda(Y_NP, ausdata_PCs)   
+#Y and X must have same number of rows
+NP_phylo_rda <- rda(Y_NP, ausdata_PCs) 
+#PCs = one row per species
+#from ausdataPCs, prune them st. only the ones included 
+#only one value per species.....noooo
+
+#NP_phylo_lm <-  lm(ln_NP_ratio ~ ausdata_PC columns, data = data)
+
 
 #CN ratio ---------------------------------------------
 complete_lnCN <- lm(ln_CN_ratio ~ SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
@@ -220,9 +231,7 @@ pcoa(D)$vectors
 plot(pcoa(D)$vectors[,1])
 plot(tr)
 
-                                                                                                                  "Nephrolepis_cordifolia", "Pteris_cretica", "Pteris_vittata", 
-                                                                                                                         "Azolla_filiculoides")))
-
+ 
 library(ape)
 #
 tr <- rcoal(20)
