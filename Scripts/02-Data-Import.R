@@ -26,6 +26,24 @@ all_data <- all_data %>%
     .after = leaf_C_per_dry_mass
   )
 
+# Add proportional variation metric for ratios
+all_data <- aus_data %>%
+  group_by(species_binom) %>%
+  mutate(
+    sd_N = sd(leaf_N_per_dry_mass, na.rm = TRUE),
+    sd_P = sd(leaf_P_per_dry_mass, na.rm = TRUE),
+    sd_C = sd(leaf_C_per_dry_mass, na.rm = TRUE),
+    sd_ln_NP = sd(ln_NP_ratio, na.rm = TRUE),
+    sd_ln_CP = sd(ln_CP_ratio, na.rm = TRUE),
+    sd_ln_CN = sd(ln_CN_ratio, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  relocate(sd_N, sd_P, sd_C,
+    sd_ln_NP, sd_ln_CN, sd_ln_CP,
+    .after = ln_CP_ratio
+  )
+
+
 # LCVP name standardization - derivation in phylogeny script
 naming_corrections <- read_csv(here('Inputs', 'all_naming_corrections.csv'))
 

@@ -1,0 +1,326 @@
+---
+title: "01-Data-Exploration"
+output: html_document
+date: "2025-06-18"
+---
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+
+Map of observations:
+```{r}
+australia_map <- map_data("world", region = "Australia")
+ggplot() +
+  geom_polygon(data = australia_map, aes(x = long, y = lat, group = group), 
+               fill = NA, color = "black", alpha = 0.5) +  # Transparent inside
+  geom_point(data = aus_data, aes(x = long_deg, y = lat_deg), size = 4) +
+  theme_void() +
+  theme(
+    panel.background = element_rect(fill = "transparent", colour = NA),
+    plot.background = element_rect(fill = "transparent", colour = NA)
+  )
+#looks squished but will work
+```
+
+
+Species observations on map:
+```{r}
+#species frequency table with associated location for plotting
+australia_map <- map_data("world", region = "Australia")
+
+species_geo <- tibble(
+  species_binom = aus_data$species_binom,
+  lat = aus_data$lat_deg,
+  long = aus_data$long_deg) %>%
+  group_by(species_binom) %>%
+  mutate(frequency = n()) %>%
+  ungroup() %>%
+  select(species_binom, lat, long, frequency) %>%
+  distinct() %>% #to remove duplicate rows
+  arrange(desc(frequency))
+
+ggplot() +
+  geom_polygon(data = australia_map, aes(x = long, y = lat, group = group), 
+               fill = "white", color = "black") +
+  geom_point(data = subset(species_geo, frequency > 50), 
+             aes(x = long, y = lat, color = species_binom), size = 2) +
+  scale_color_discrete() +
+  theme_classic()
+```
+
+
+Leaf nutrient concentration by categorical variables:
+```{r}
+
+#would be good to rewrite
+#so that nutrient information is automatically a factor
+#a list or smth
+leaf_concentration_data <- aus_data %>%
+  select(
+         Unique_ID, woodiness, reclass_life_history,
+         putative_BNF, myc_type,
+         leaf_N_per_dry_mass, leaf_P_per_dry_mass, 
+         leaf_C_per_dry_mass,
+         NP_ratio, CN_ratio, CP_ratio,
+         ln_NP_ratio, ln_CN_ratio, ln_CP_ratio) %>%
+  pivot_longer(cols = c(leaf_N_per_dry_mass, leaf_P_per_dry_mass,   
+                        leaf_C_per_dry_mass,
+                        NP_ratio, CN_ratio, CP_ratio,
+                        ln_NP_ratio, ln_CN_ratio, ln_CP_ratio),
+               names_to = "nutrient",
+               values_to = "concentration") %>%
+  mutate(nutrient = factor(case_when(
+    nutrient == "leaf_N_per_dry_mass" ~ "N",
+    nutrient == "leaf_P_per_dry_mass" ~ "P",
+    nutrient == "leaf_C_per_dry_mass" ~ "C",
+    nutrient == "NP_ratio" ~ "N:P Ratio", 
+    nutrient == "CN_ratio" ~ "C:N Ratio",
+    nutrient == "CP_ratio" ~ "C:P Ratio", 
+    nutrient == "ln_NP_ratio" ~ "Logged N:P Ratio",
+    nutrient == "ln_CN_ratio" ~ "Logged C:N Ratio",
+    nutrient == "ln_CP_ratio" ~ "Logged C:P Ratio",
+  )))
+
+
+ggplot(subset(leaf_concentration_data, nutrient == "N"), 
+       aes(x = factor(myc_type), y = concentration)) +
+  geom_boxplot(fill = "pink") +
+  #labs(x = "Woodiness", y = "Concentration (per dry mass)", 
+      # title = "Leaf N by Woodiness")
+  theme_classic()
+
+ggplot(subset(leaf_concentration_data, nutrient == "Logged N:P Ratio"), 
+       aes(x = factor(reclass_life_history), y = concentration)) +
+  geom_boxplot(fill = "lightgrey") +
+  #labs(x = "Woodiness", y = "Concentration (per dry mass)", 
+      # title = "Leaf N by Woodiness")
+  theme_classic()
+```
+
+
+Leaf nutrient concentration by species dot plot:
+```{r}
+pruned <- prune_ausdata(aus_data, 62)
+complete <- aus_data %>% mutate(species_binom = "All Species")
+combined <- bind_rows(pruned, complete)
+
+# Capitalize species_binom names
+capitalize_species <- function(name) {
+  name_parts <- strsplit(name, "_")[[1]]
+  paste(toupper(substring(name_parts, 1, 1)), substring(name_parts, 2), sep = "", collapse = " ")
+}
+
+# Apply the capitalization function to species names in pruned dataframe
+pruned <- pruned %>%
+  mutate(species_binom = sapply(species_binom, capitalize_species))
+
+# Correctly set the factor levels with "All Species" first
+combined <- bind_rows(complete, pruned)
+combined$species_binom <- factor(combined$species_binom,
+                                 levels = c("All Species", unique(pruned$species_binom)))
+# Explicitly define factor levels with "All Species" first
+
+
+# Plot with adjustments
+ggplot(combined, aes(x = species_binom, y = leaf_N_per_dry_mass)) +
+  geom_jitter(width = 0.2, height = 0, size = 1.5, alpha = 0.6, color = "black") +
+  theme_classic() +
+  labs(title = "",
+       y = "Leaf Nitrogen Concentration (per dry mass)",
+       x = NULL) +
+  theme(
+    axis.text.x = element_text(angle = 50, hjust = 1, size = 20, color = "black"),
+    axis.text.y = element_text(size = 14, color = "black"),
+    axis.title.y = element_text(size = 20, color = "black", margin = margin(r = 20)),
+    plot.title = element_text(size = 16, color = "black")
+    )
+```
+
+
+Species-level lin. reg:
+```{r}
+#Pick boundary for observation count
+species <- as.data.frame(table(aus_data$species_binom))  %>%
+  arrange(desc(Freq)) %>%
+  rename(species_binom = Var1)
+
+genus <- as.data.frame(table(aus_data$genus)) %>%
+  arrange(desc(Freq)) %>%
+  rename(genus = Var1)
+
+family <- as.data.frame(table(aus_data$family)) %>%
+  arrange(desc(Freq)) %>%
+  rename(family = Var1)
+
+#Prune to desired number of observations
+pruned <- prune_ausdata(aus_data, 62)
+
+ggplot(pruned, aes(x = SN_total_0_30, y = (leaf_N_per_dry_mass), color = species_binom)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE)
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+Simple environment-trait relationship for all predictors:
+```{r}
+env_variables <- c("SN_total_0_30", "SP_total_0_30", "SOC_total_0_30",
+  "CEC_total_0_30", "AP_total_0_30",
+  "NPP", "MAT", "PPT", "AET",
+  "precipitation_seasonality", "temp_seasonality")
+
+#can do for any trait, including sd and CV
+for (var in env_variables) {
+  p <- ggplot(aus_data, aes_string(x = var, y = "sd_ln_NP")) +
+    geom_point(alpha = 0.6) +
+    # geom_smooth(method = "lm", col = "blue") +
+    theme_classic()
+  
+  print(p)
+}
+```
+
+
+Variation along environmental gradients:
+```{r}
+ggplot(aus_data, aes(x = SN_total_0_30, y = sd_ln_NP)) +
+  geom_point(alpha = 0.6) +
+  #geom_smooth(method = "lm", col = "blue") +
+  theme_classic()
+```
+
+
+Missing data densities:
+```{r}
+na_data <- aus_data %>%
+  mutate(across(c(leaf_P_per_dry_mass,leaf_C_per_dry_mass,
+                  NP_ratio, CN_ratio, CP_ratio), as.character)) %>% 
+  replace_na(list(leaf_N_per_dry_mass= "NA", leaf_P_per_dry_mass = "NA",
+                  leaf_C_per_dry_mass = "NA",NP_ratio = "NA",
+                  CN_ratio = "NA", CP_ratio = "NA"))
+
+na_data <- na_data %>%
+  filter(leaf_P_per_dry_mass == "NA" | leaf_C_per_dry_mass == "NA" |
+           NP_ratio == "NA" | CN_ratio == "NA" | CP_ratio == "NA")
+
+#specify colors
+color_palette <- c("NA rows" = "lightgray", "All data" = "lightgreen")
+
+#density plot of missing leaf concentration data
+#using (complete) leaf N to compare rows with NAs for P and C
+ggplot() +
+  geom_density(data = aus_data,
+               mapping = aes(x = leaf_N_per_dry_mass,
+                             fill = "All data", alpha = 0.5)) +
+  geom_density(data = na_data,
+               mapping = aes(x = leaf_N_per_dry_mass,
+                             fill = "NA rows", alpha = 0.5)) +
+  labs(title = "Leaf N observations with Missing Leaf P and/or Leaf C",
+       x = "leaf N", y = "Density") +
+  theme_classic() +
+  scale_fill_manual(values = color_palette, name = " ") +
+  theme(legend.position = c(0.83, 0.86))
+
+#missing env. coverage
+ggplot() +
+  geom_density(data = aus_data,
+               mapping = aes(x = SN_total_0_30,
+                             fill = "All data", alpha = 0.5)) +
+  geom_density(data = na_data,
+               mapping = aes(x = SN_total_0_30,
+                             fill = "NA rows", alpha = 0.5)) +
+  labs(title = "Observations with Missing Leaf P and/or Leaf C",
+       y = "Density") +
+  theme_classic() +
+  scale_fill_manual(values = color_palette, name = " ") +
+  theme(legend.position = c(0.83, 0.86))
+```
+
+
+Phylogenetic tree:
+```{r}
+library(ggtree)
+library(tidytree)
+library(treeio)
+setwd("/Users/sofiaquijada/Library/Mobile Documents/com~apple~CloudDocs/McGill/2024 Soper Lab/AusStoich-Collab")
+
+#works but only if all run at once
+ausdata_all_pos_sp_tree <- read.tree("Inputs/Trees/ausdata_all_pos_sp.tre")
+austraits_all_pos_sp_df <- read_csv('Inputs/all_pos_austraits_LCVP_sp.csv')
+
+all_pos_sp_data <- aus_data[aus_data$species_binom %in%
+                   austraits_all_pos_sp_df$species, ]
+
+all_pos_sp_data <- add_CV_columns(select_relevant_columns(all_pos_sp_data))
+
+avg_all_pos_sp_data <- average_nutrient_data(all_pos_sp_data)
+
+#horizontal base
+all_pos_sp_plot <- ggtree(ausdata_all_pos_sp_tree) + geom_tiplab(size = 0.5)
+
+#most basic, no coloring, horizontal bar plot
+all_pos_sp_plot + geom_facet(
+  panel = 'Trait',
+  data = avg_all_pos_sp_data,
+  geom = geom_col,
+  mapping = aes(x = avg_leaf_N),
+  orientation = "y") +
+  ggtitle("") +
+  theme(plot.title = element_text(size = 20))
+
+names(avg_all_pos_sp_data)[1] <- "label"
+attemptree <- full_join(as.treedata(ausdata_all_pos_sp_tree), avg_all_pos_sp_data, by = "label")
+
+#mess with line thickness, and very small tip labels to manually write over later
+#get label in the middle
+ggtree(attemptree, aes(color = avg_leaf_N), layout = "circular") +
+  scale_color_continuous(low = "#6ad1f3", high = "#ee6b00") +
+  geom_tiplab(size = 0.5)
+```
+
+
+
+
+
+
+
+Following was generated when creating file:
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
