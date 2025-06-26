@@ -37,15 +37,6 @@ prior_phylo <- list(
 )
 
 
-#MCMC settings
-Nnitt = 1100000
-Nthin = 1000
-Nburnin = 100000
-
-
-#MVN prior for fixed effects
-
-
 #get column for phylo tip labels, and another for species
 aus_data$phylo <- aus_data$species_binom
 
@@ -59,24 +50,29 @@ ausdata_all_pos_sp <- aus_data %>%
 ausdata_all_pos_sp$phylo <- factor(ausdata_all_pos_sp$phylo)
 ausdata_all_pos_sp$species_binom <- factor(ausdata_all_pos_sp$species_binom)
 
-#not matching up
-#match manually
+
+#not matching up, match manually
 ausdata_all_pos_sp$phylo <- factor(ausdata_all_pos_sp$phylo,
                                    levels = rownames(phylo_inv$Ainv))
 all(levels(ausdata_all_pos_sp$phylo) %in% rownames(phylo_inv$Ainv)) #TRUE
 
-#could be that model doesnt work on tibble, from stack overflow
-ausdata_all_pos_sp <- as.data.frame(ausdata_all_pos_sp)
 
 #family column causes issues
 ausdata_all_pos_sp <- ausdata_all_pos_sp %>%
   rename(fam = family)
 ausdata_all_pos_sp$family <- NULL
 
+#could be that model doesnt work on tibble, from stack overflow
 ausdata_all_pos_sp <- as.data.frame(ausdata_all_pos_sp)
 
+
+#trait distributions
+ggplot(data = aus_data) +
+  geom_histogram(mapping = aes(x = log(leaf_C_per_dry_mass))) +
+  theme_minimal()
+
+
 #aim for 1000-2000 effective sample size
-#with Nnitt = 1100000 you get 1000
 tic("model run")
 model <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
                   + CEC_total_0_30 + AP_total_0_30 +
@@ -85,7 +81,7 @@ model <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 
                   random = ~ phylo +species_binom, #columns in data
                   family = "gaussian",
                   ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
-                  data = ausdata_all_pos_sp, nitt = Nnitt, burnin = Nburnin, thin = Nthin)
+                  data = ausdata_all_pos_sp, nitt = 100000, burnin = 1000, thin = 10)
 toc()
 summary(model)
 summary(model)$solutions
@@ -94,30 +90,22 @@ autocorr.plot(model$Sol)
 
 tic("Model run")
 
-model1 <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
-                    + CEC_total_0_30 + AP_total_0_30 +
-                    + NPP + MAT + PPT + AET +
-                    + precipitation_seasonality + temp_seasonality,
-                  random = ~ phylo +species_binom, #columns in data
-                  family = "gaussian",
-                  ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
-                  data = ausdata_all_pos_sp, nitt = 5000000, burnin = Nburnin, thin = Nthin)
-toc()
-#set R to never stop running even when computer is off in settings
-#or in terminal 
 
 
 
-#need to do a script that has all models at once - write it
-#need to do one for each trait, then do smth for different priors
-#strong prior and weak prior
-#as well as base script for model checks, for mcmcglmm model objects
-#can do those manually 
-#then ask caroline for advice on optimization
+# To do:
+#IMPLEMENT CATEGORICAL DATA AS FIXED PREDICTOR
+#need to do a script that has all models at once
+#need to do one for each trait, strong and weak priors
+#model convergence checks, sensitivity analyses, diagnostic plots
+#feature selection
+#distinct trees
+#save model outputs
+
 #final script should have:
 #checks of distribution (histograms), feature selection
-#different priors (strong and weak) and different trees(2) ie. just set tree <- tree of choice at beginning or smth
 #diagnostic plots and convergence checks, sensitivity analyses
+#save model outputs somewhere as actual object, or save summary stats, diagnostic plots
 
 tic("test run")
 test <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
@@ -142,13 +130,6 @@ hist(mcmc(test$VCV)[,"species_binom"])
 
 #---- assess convergence of fixed effects
 plot(test$Sol)
-#trace is like time series of what model did while running, want fuzzy worm
-#for good mixing
-#density is smooth histogram of estimates of posterior distribution that model produced 
-
-
-#for too much autocorrelation: increase iteration number, increase burn in, 
-#increasing thinning interval, or stronger prior
 
 #assess convergence of random effects
 plot(test$VCV)
