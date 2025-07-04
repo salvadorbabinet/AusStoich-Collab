@@ -105,8 +105,6 @@ ggplot(subset(leaf_concentration_data, nutrient == "Logged N:P Ratio"),
   #labs(x = "Woodiness", y = "Concentration (per dry mass)", 
       # title = "Leaf N by Woodiness")
   theme_classic()
-
-
 ```
 
 Leaf nutrient concentration by species dot plot:
@@ -129,7 +127,7 @@ pruned <- pruned %>%
 combined <- bind_rows(complete, pruned)
 combined$species_binom <- factor(combined$species_binom,
                                  levels = c("All Species", unique(pruned$species_binom)))
-#Explicitly define factor levels with "All Species" first
+# Explicitly define factor levels with "All Species" first
 
 
 # Plot with adjustments

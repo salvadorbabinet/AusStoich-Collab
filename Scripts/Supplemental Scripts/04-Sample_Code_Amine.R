@@ -77,7 +77,7 @@ library(ellipse)
 # Parameters for the Inverse Wishart distribution
 
 #we will use inverse wishart prior for the phylogeny!!
-#
+
 
 # nu (v): degrees of freedom, needs to be > dim(Psi) or R will throw a fit
 # for weak prior, v will be similar to number of species
@@ -125,3 +125,20 @@ expand.grid(x = 1:3, y = 20:21)
 
 #lost code where we looked at phylogenies with generated data
 #according to lambda
+#didnt find :(
+
+
+#biogeom tree niche hypothesis paper
+model <- MCMCglmm(Root_Scores ~ 1, random=~phylogeny+species,
+                  data= dfasc, pedigree=tree.dfa, nodes='TIPS',
+                  family="gaussian", verbose=T, prior=random_intercepts_prior(2),
+                  nitt=Nnitt, burnin=Nburnin, thin=Nthin) 
+#same prior - they defined their own random_intercepts_prior(2)
+
+#to show inva and solve(vcv) do the same thing
+invA <- as.matrix(inverseA(pedigree = ausdata_all_pos_sp_tree, nodes = "TIPS", scale = TRUE)$Ainv)
+invVCV <- solve(vcv(phy = ausdata_all_pos_sp_tree))
+
+cor(c(invA), c(invVCV))
+plot(c(invA), c(invVCV))
+abline(h = 0, v = 0, lty = 2)

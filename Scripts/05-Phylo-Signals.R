@@ -210,7 +210,7 @@ all_pos_sp_circular_plot + geom_fruit(
 # "ausdata", cut = 1414, unresolved nodes
 # Note that cut is inclusive i.e. up to and including
 
-tree_tib <- "ausdata_all_pos_sp"
+tree_tib <- "ausdata"
 
 #write conditionals into function
 
@@ -254,14 +254,14 @@ if (tree_tib == "ITS_tree") {
 # avg_ar_NP_ratio, avg_ar_CN_ratio or avg_ar_CP_ratio
 # avg_geo_NP_ratio, avg_geo_CN_ratio, avg_geo_CP_ratio
 
-trait <- "CV_C"
+trait <- "avg_geo_NP_ratio"
 
 # 3. Use extract_trait_values() on tree tib to get values of interest
 
 trait_data <- extract_trait_values(tree_tib, "label", trait, cut)
 logged_trait_data <- log(trait_data)
 
-# 4. Get signals.
+# 4. Get signals
 K_signal <- phylosig(tree, trait_data, method = "K", nsim = 10000, test = TRUE)
 print(K_signal)
 quantile(K_signal$sim.K,c(0.05,0.95))
