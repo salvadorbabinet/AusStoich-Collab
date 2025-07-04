@@ -1,13 +1,44 @@
 library(ape)
 library(MCMCglmm)
+library(coda)
 library(ggtree)
 library(tictoc)
 library(dplyr)
+library(ggplot2)
+library(corrplot)
+
 
 aus_data <- aus_data #from 02-Data-Import script
 #note to self - this may be reason family column is maintained in memory
 #despite removing it.. since its a virtual object, not an opened csv
 
+
+#scale continuous predictors for comparable estimates
+cont_predictors <- c("SN_total_0_30", "SP_total_0_30", "SOC_total_0_30",
+                     "CEC_total_0_30", "AP_total_0_30", "NPP", "MAT", "PPT", "AET",
+                     "precipitation_seasonality", "temp_seasonality")
+cat_predictors <- c("myc_type", "woodiness", "putative_BNF", "reclass_life_history")
+predictors <- c(cont_predictors, cat_predictors)
+
+aus_data[cont_predictors] <- scale(aus_data[cont_predictors])
+
+
+#variable selection-------------------------------------------------------------
+env <- as.data.frame(aus_data[predictors])
+env <- env %>% mutate(across(all_of(cat_predictors), as.character))
+
+#compute VIF
+diag(solve(cor(env[cont_predictors])))
+
+#plot correlated variables
+corrplot(cor(aus_data[cont_predictors]))
+
+#Highly colinear: AET-PPT, AET-temp_seasonality. Remove AET
+env$AET <- NULL
+cont_predictors <- cont_predictors[cont_predictors != "AET"]
+diag(solve(cor(env[cont_predictors])))
+aus_data$AET <- NULL
+#-------------------------------------------------------------------------------
 
 #this is for tree with total resolved species, no uncertain nodes
 ausdata_all_pos_sp_tree <- read.tree("Inputs/Trees/ausdata_all_pos_sp.tre")
@@ -72,25 +103,9 @@ ggplot(data = aus_data) +
   theme_minimal()
 
 
-#aim for 1000-2000 effective sample size
-tic("model run")
-model <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
-                  + CEC_total_0_30 + AP_total_0_30 +
-                  + NPP + MAT + PPT + AET +
-                  + precipitation_seasonality + temp_seasonality,
-                  random = ~ phylo +species_binom, #columns in data
-                  family = "gaussian",
-                  ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
-                  data = ausdata_all_pos_sp, nitt = 100000, burnin = 1000, thin = 10)
-toc()
-summary(model)
-summary(model)$solutions
-plot(model$Sol)
-autocorr.plot(model$Sol)
-
-tic("Model run")
-
-
+#MCMCglmm can't have any NAs in fixed predictors
+ausdata_all_pos_sp <- ausdata_all_pos_sp %>%
+  filter(!is.na(myc_type) & !is.na(woodiness))
 
 
 # To do:
@@ -107,19 +122,20 @@ tic("Model run")
 #diagnostic plots and convergence checks, sensitivity analyses
 #save model outputs somewhere as actual object, or save summary stats, diagnostic plots
 
+
 tic("test run")
 test <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
                      + CEC_total_0_30 + AP_total_0_30 +
                      + NPP + MAT + PPT + AET +
-                     + precipitation_seasonality + temp_seasonality,
-                   random = ~ phylo +species_binom, #columns in data
+                     + precipitation_seasonality + temp_seasonality +
+                    + reclass_life_history + putative_BNF + myc_type + woodiness,
+                   random = ~ phylo + species_binom, #columns in data
                    family = "gaussian",
                    ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
-                   data = ausdata_all_pos_sp, nitt = 26000, burnin = 2000, thin = 200)
+                   data = ausdata_all_pos_sp, nitt = 26000, burnin = 1000, thin = 10)
 toc()
 summary(test) 
-#estimates show posterior distribution for estimates, with credible intervals 
-#here is attempt at gettning diagnostic plots
+
 
 #----plotting histograms of random effect
 par(mfrow = c(1,2)) #to set plot parameters
@@ -133,3 +149,67 @@ plot(test$Sol)
 
 #assess convergence of random effects
 plot(test$VCV)
+
+
+#---- here will be "real" model
+#aim for 1000-2000 effective sample size
+tic("model run")
+model <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+                    + CEC_total_0_30 + AP_total_0_30 +
+                    + NPP + MAT + PPT + AET +
+                    + precipitation_seasonality + temp_seasonality,
+                  random = ~ phylo +species_binom, #columns in data
+                  family = "gaussian",
+                  ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
+                  data = ausdata_all_pos_sp, nitt = 100000, burnin = 1000, thin = 10)
+toc()
+summary(model)
+summary(model)$solutions
+plot(model$Sol)
+plot(model$VCV)
+autocorr.plot(model$Sol)
+
+#----------------To send before end of Friday
+
+
+
+#chains
+#first check burn in period (low number of iterations)
+chain1 <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+                     + CEC_total_0_30 + AP_total_0_30 +
+                     + NPP + MAT + PPT +
+                     + precipitation_seasonality + temp_seasonality +
+                     + reclass_life_history + putative_BNF + myc_type + woodiness,
+                   random = ~ phylo +species_binom,
+                   family = "gaussian",
+                   ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
+                   data = ausdata_all_pos_sp, nitt = 10000, burnin = 0, thin = 10)
+
+chain2 <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+                     + CEC_total_0_30 + AP_total_0_30 +
+                     + NPP + MAT + PPT +
+                     + precipitation_seasonality + temp_seasonality +
+                     + reclass_life_history + putative_BNF + myc_type + woodiness,
+                   random = ~ phylo +species_binom,
+                   family = "gaussian",
+                   ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
+                   data = ausdata_all_pos_sp, nitt = 10000, burnin = 0, thin = 10)
+
+chain3 <- MCMCglmm(ln_NP_ratio ~  SN_total_0_30 + SP_total_0_30 + SOC_total_0_30 +
+                     + CEC_total_0_30 + AP_total_0_30 +
+                     + NPP + MAT + PPT +
+                     + precipitation_seasonality + temp_seasonality +
+                     + reclass_life_history + putative_BNF + myc_type + woodiness,
+                   random = ~ phylo +species_binom,
+                   family = "gaussian",
+                   ginverse = list(phylo = phylo_inv$Ainv), prior = prior_phylo,
+                   data = ausdata_all_pos_sp, nitt = 10000, burnin = 0, thin = 10)
+
+combined_chains <- mcmc.list(chain1$Sol, chain2$Sol, chain3$Sol)
+# Check convergence
+gelman.diag(combined_chains) #does anova on different chains
+traceplot(combined_chains)
+autocorr.plot(chain1$Sol)
+autocorr.plot(chain1$VCV)
+
+#write csv of model solutions, plots, diagnostics

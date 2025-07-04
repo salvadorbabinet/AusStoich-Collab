@@ -14,6 +14,7 @@ all_data <- read_csv(
   )
 )
 
+
 all_data <- all_data %>%
   mutate(
     ln_NP_ratio = log(NP_ratio),
@@ -43,7 +44,6 @@ all_data <- aus_data %>%
     .after = ln_CP_ratio
   )
 
-
 # LCVP name standardization - derivation in phylogeny script
 naming_corrections <- read_csv(here('Inputs', 'all_naming_corrections.csv'))
 
@@ -61,6 +61,19 @@ all_corrected_data <- all_data %>%
     family = ifelse(!is.na(family_after_correction), family_after_correction, family)
   ) %>%
   select(-species_after_correction, -genus_after_correction, -family_after_correction)
+
+# Add myc_type assignment post naming correction
+aus_data <- aus_data %>%
+  mutate(
+    myc_type = as.character(myc_type), 
+    myc_type = case_when(
+      species_binom == "Chenopodium_nutans" ~ "NM-AM",
+      species_binom == "Epaltes_australis" ~ "AM",
+      species_binom == "Notogrammitis_billardierei" ~ "AM",
+      TRUE ~ myc_type
+    ),
+    myc_type = factor(myc_type)
+  )
 
 # Outliers (only Fiona-confirmed, see 03-EDA for all candidates)
 outliers <- all_corrected_data |> filter(leaf_N_per_dry_mass > 60)

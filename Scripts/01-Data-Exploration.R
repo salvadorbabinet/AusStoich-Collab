@@ -106,7 +106,7 @@ corrplot(cor(env))
 #--------------------------Leaf Nutrient Concentrations-------------------------
 
 ggplot(data = aus_data) +
-  geom_histogram(mapping = aes(x = log(CP_ratio))) +
+  geom_histogram(mapping = aes(x = ln_NP_ratio)) +
   theme_minimal()
 
 #using average nutrient df from phylogeny script, of all species
@@ -179,6 +179,10 @@ aus_data %>%
        x = "Family", y = "C:N Ratio") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+#how many P and N values below 1?
+#only one N
+#3051 P below one
+
 
 #--------------------------Trait Env Relationships-------------------------
 
@@ -200,7 +204,7 @@ plot(lm)  #ok
 #all data
 ggplot(aus_data, aes(x = AP_total_0_30, y = (leaf_P_per_dry_mass))) +
   geom_point(alpha = 0.6) +  # Scatter plot of the data points
-  geom_smooth(method = "lm", col = "blue") +  # Add the regression line
+  geom_smooth(method = "lm", col = "blue") +
   theme_classic() +
   labs(title = "log(leaf_N_per_dry_mass) ~ AP_total_0_30",
        x = "AP_total_0_30",
@@ -235,12 +239,18 @@ genera_pruned <- aus_data %>%
 #3 most common families: myrtaceae, fabaceae, proteaceae
 family_pruned <- aus_data %>%
   filter(family %in% c("Myrtaceae", "Fabaceae", "Proteaceae"))
-
   ggplot(family_pruned, aes(x = SN_total_0_30, y = log(leaf_N_per_dry_mass), color = family)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  
+#variation along environmental gradients
+ggplot(aus_data, aes(x = SN_total_0_30, y = sd_ln_NP)) +
+  geom_point(alpha = 0.6) +
+  #geom_smooth(method = "lm", col = "blue") +
+  theme_classic()
 
 #-----------------------Species Frequency + Spread------------------------------
 species <- as.data.frame(table(aus_data$species_binom))  %>%
